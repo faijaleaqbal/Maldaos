@@ -1,27 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import "leaflet/dist/leaflet.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --font-serif: 'Playfair Display', Georgia, Cambria, serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'GeistMono', Menlo, Monaco, 'Courier New', monospace;
+
+    --background: #F8F6F1;
+    --foreground: #171717;
+    --card: #FFFFFF;
+    --card-foreground: #171717;
+    --primary: #7A1F2B;
+    --primary-foreground: #FFFFFF;
+    --accent: #D4A72C;
+    --accent-foreground: #171717;
+    --muted: #F1ECE3;
+    --muted-foreground: #6B6870;
+    --border: #E5DFD5;
+    --ring: #7A1F2B;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  /* Accessible focus states */
+  *:focus-visible {
+    outline: 2px solid #7A1F2B;
+    outline-offset: 2px;
+  }
+
+  /* Custom scrollbar matching institutional warm tone */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #F1ECE3;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #C4657B;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #7A1F2B;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+/* Leaflet map customization to match institutional palette */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  font-family: inherit;
+  z-index: 10;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(84, 19, 29, 0.12);
+  border: 1px solid #E5DFD5;
+  padding: 4px;
+}
+
+.leaflet-popup-content {
+  margin: 8px 12px;
+  line-height: 1.4;
+}
+
+/* Pulse badge for critical status */
+@keyframes pulse-dot {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.7);
   }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(185, 28, 28, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(185, 28, 28, 0);
+  }
+}
+
+.critical-pulse-marker {
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
 }
