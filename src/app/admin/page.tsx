@@ -35,7 +35,7 @@ export default function AdminDashboardPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const criticalIssues = issues.filter(
-    (i) => i.priority === 'CRITICAL' && i.status !== 'RESOLVED' && i.status !== 'CLOSED'
+    (i) => i.priority === 'URGENT' && i.status !== 'RESOLVED' && i.status !== 'CLOSED'
   );
   const inProgressIssues = issues.filter(
     (i) => i.status === 'IN_PROGRESS' || i.status === 'ASSIGNED'

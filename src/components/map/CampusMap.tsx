@@ -167,7 +167,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
       });
 
       displayedIssues.forEach((issue) => {
-        const isCritical = issue.priority === 'CRITICAL' && issue.status !== 'RESOLVED';
+        const isCritical = (issue.priority === 'URGENT' || (issue.priority as string) === 'CRITICAL') && issue.status !== 'RESOLVED' && issue.status !== 'CLOSED';
         const isResolved = issue.status === 'RESOLVED' || issue.status === 'CLOSED';
 
         let markerColor = '#D4A72C'; // Gold for medium

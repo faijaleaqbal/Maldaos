@@ -31,7 +31,8 @@ export const IssueTable: React.FC<IssueTableProps> = ({
   const [sortAsc, setSortAsc] = useState(false);
 
   const getPriorityWeight = (p: IssuePriority) => {
-    switch (p) {
+    switch (p as string) {
+      case 'URGENT':
       case 'CRITICAL':
         return 4;
       case 'HIGH':
@@ -120,7 +121,7 @@ export const IssueTable: React.FC<IssueTableProps> = ({
         </thead>
         <tbody className="divide-y divide-warm-200">
           {sortedIssues.map((issue) => {
-            const isCritical = issue.priority === 'CRITICAL' && issue.status !== 'RESOLVED';
+            const isCritical = (issue.priority === 'URGENT' || (issue.priority as string) === 'CRITICAL') && issue.status !== 'RESOLVED' && issue.status !== 'CLOSED';
 
             return (
               <tr

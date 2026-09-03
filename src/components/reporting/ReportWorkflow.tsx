@@ -32,15 +32,12 @@ import {
 } from 'lucide-react';
 
 const CATEGORY_OPTIONS: { label: string; value: IssueCategory }[] = [
-  { label: 'Electrical & Power Supply', value: 'ELECTRICAL' },
-  { label: 'Plumbing & Water Supply', value: 'PLUMBING' },
-  { label: 'IT, Wi-Fi & Network Systems', value: 'IT_NETWORK' },
-  { label: 'Classroom & Furniture (Desks, Projector, Board)', value: 'FACILITY_CLASSROOM' },
-  { label: 'Laboratory Equipment & Scientific Apparatus', value: 'LAB_EQUIPMENT' },
-  { label: 'Sanitation, Washroom & Waste Management', value: 'SANITATION' },
-  { label: 'Campus Safety & Physical Security', value: 'SAFETY_SECURITY' },
+  { label: 'Infrastructure & Civil Works', value: 'INFRASTRUCTURE' },
+  { label: 'Academic & Classroom Facilities', value: 'ACADEMICS' },
   { label: 'Hostel Infrastructure', value: 'HOSTEL' },
-  { label: 'Other Facility Concern', value: 'OTHER' },
+  { label: 'Sanitation & Cleanliness', value: 'CLEANLINESS' },
+  { label: 'Campus Safety & Physical Security', value: 'SAFETY' },
+  { label: 'Other Campus Concerns', value: 'OTHER' },
 ];
 
 export const ReportWorkflow: React.FC = () => {
@@ -54,11 +51,12 @@ export const ReportWorkflow: React.FC = () => {
 
   // Form State
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<IssueCategory>('FACILITY_CLASSROOM');
+  const [category, setCategory] = useState<IssueCategory>('INFRASTRUCTURE');
   const [priority, setPriority] = useState<IssuePriority>('MEDIUM');
   const [description, setDescription] = useState('');
   const [isSafetyHazard, setIsSafetyHazard] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [location, setLocation] = useState<CampusLocation>({
     building: MOCK_BUILDINGS[0].name,
     buildingCode: MOCK_BUILDINGS[0].code,
@@ -105,53 +103,25 @@ export const ReportWorkflow: React.FC = () => {
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
+      setErrors({});
 
-      // Perform AI Analysis Triage
-      let analysis;
-      try {
-        analysis = await AIService.analyzeIssue(title, description, location.building, issues);
-      } catch (e) {
-        analysis = AIService.getFallbackAnalysis();
-      }
-
-      // Department routing mapping
-      let department = 'Campus Infrastructure Helpdesk';
-      if (category === 'ELECTRICAL') department = 'Electrical & Facility Operations';
-      else if (category === 'PLUMBING') department = 'Civil Works & Plumbing';
-      else if (category === 'IT_NETWORK') department = 'IT & Network Cell';
-      else if (category === 'FACILITY_CLASSROOM') department = 'Academic Infrastructure & IQAC';
-      else if (category === 'LAB_EQUIPMENT') department = 'IT & Network Cell';
-      else if (category === 'SANITATION') department = 'Civil Works & Sanitation';
-      else if (category === 'SAFETY_SECURITY') department = 'Campus Security & Estate Office';
-      else if (category === 'HOSTEL') department = 'Hostel Superintendent Office';
-
-      const finalPriority: IssuePriority = isSafetyHazard
-        ? 'CRITICAL'
-        : analysis.suggestedPriority || priority;
+      const finalPriority: IssuePriority = isSafetyHazard ? 'URGENT' : priority;
 
       const created = await createIssue({
         title,
         description,
         category,
         priority: finalPriority,
-        status: 'AI_ANALYZED',
         location,
-        reporter: {
-          id: user.id,
-          name: user.name,
-          role: user.role,
-          studentId: user.studentId,
-          department: user.department,
-        },
-        department,
-        images,
-        aiAnalysis: analysis,
+        isAnonymous,
+        imageFiles,
       });
 
       setCreatedIssue(created);
       setStep(5);
     } catch (err: any) {
-      setErrors({ submit: err.message || 'Failed to submit issue report.' });
+      console.error('Issue submission error:', err);
+      setErrors({ submit: err.message || 'Failed to submit issue report. Please retry.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -224,7 +194,7 @@ export const ReportWorkflow: React.FC = () => {
 
           <Input
             label="Issue Title / Subject *"
-            placeholder="e.g. Projector lamp flickering in Room 204, Water cooler leak outside Optics Lab..."
+            placeholder="e.g. Broken bench in Room 204, Water leakage near Optics Lab..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             error={errors.title}
@@ -240,11 +210,11 @@ export const ReportWorkflow: React.FC = () => {
           <Textarea
             label="Detailed Description *"
             rows={4}
-            placeholder="Describe what happened, when you noticed it, and how it impacts classes or student safety..."
+            placeholder="Describe what happened, when you noticed it, and how it impacts classes or campus safety..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             error={errors.description}
-            helperText="Include relevant details like equipment brand, floor water spread, or strange sounds/odors."
+            helperText="Include relevant details like specific fixtures, water flow, or urgent hazards."
           />
 
           {/* Safety Hazard Toggle */}
@@ -261,7 +231,24 @@ export const ReportWorkflow: React.FC = () => {
                 <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
                 This is an immediate safety or electrical hazard
               </span>
-              Check this if there is exposed live wiring, sparking, flooding near electrical outlets, or structural danger. This triggers immediate priority escalation.
+              Check this if there is exposed live wiring, sparking, flooding near electrical outlets, or structural danger. This sets priority to URGENT.
+            </label>
+          </div>
+
+          {/* Anonymous Reporting Toggle */}
+          <div className="rounded-lg border border-warm-300 bg-warm-50 p-3.5 flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="anon-toggle"
+              checked={isAnonymous}
+              onChange={(e) => setIsAnonymous(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-warm-400 text-maroon-700 focus:ring-maroon-700 cursor-pointer"
+            />
+            <label htmlFor="anon-toggle" className="text-xs text-ink cursor-pointer">
+              <span className="font-semibold text-ink block">
+                Submit Report Anonymously
+              </span>
+              Your name and student identification will be hidden from other students in public feeds.
             </label>
           </div>
 
@@ -273,6 +260,7 @@ export const ReportWorkflow: React.FC = () => {
         </motion.div>
       )}
 
+
       {/* STEP 2: Photo / Evidence */}
       {step === 2 && (
         <motion.div
@@ -283,11 +271,11 @@ export const ReportWorkflow: React.FC = () => {
           <div className="border-b border-warm-200 pb-3">
             <h3 className="font-serif font-semibold text-lg text-ink">Step 2: Upload Photo / Evidence</h3>
             <p className="text-xs sm:text-sm text-ink-muted">
-              Photographic evidence speeds up maintenance response times by over 60%.
+              Photographic evidence is stored securely in Supabase Storage and registered to your ticket.
             </p>
           </div>
 
-          <ImageUploader images={images} onChange={setImages} />
+          <ImageUploader imageFiles={imageFiles} onFilesChange={setImageFiles} />
 
           <div className="flex items-center justify-between pt-3 border-t border-warm-200">
             <Button variant="secondary" onClick={handleBack} leftIcon={<ArrowLeft className="w-4 h-4" />}>
@@ -351,7 +339,7 @@ export const ReportWorkflow: React.FC = () => {
               </div>
               <div>
                 <span className="text-[11px] text-ink-muted uppercase font-medium block">Priority Status</span>
-                <PriorityBadge priority={isSafetyHazard ? 'CRITICAL' : priority} />
+                <PriorityBadge priority={isSafetyHazard ? 'URGENT' : priority} />
               </div>
             </div>
 
@@ -372,18 +360,18 @@ export const ReportWorkflow: React.FC = () => {
               </p>
             </div>
 
-            {images.length > 0 && (
+            {imageFiles.length > 0 && (
               <div>
                 <span className="text-[11px] text-ink-muted uppercase font-medium block mb-2">
-                  Evidence Photos ({images.length})
+                  Evidence Photos ({imageFiles.length})
                 </span>
                 <div className="flex gap-2 overflow-x-auto py-1">
-                  {images.map((img, i) => (
+                  {imageFiles.map((file, i) => (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       key={i}
-                      src={img}
-                      alt="Thumbnail"
+                      src={URL.createObjectURL(file)}
+                      alt={file.name}
                       className="w-16 h-16 object-cover rounded border border-warm-300"
                     />
                   ))}
@@ -391,9 +379,15 @@ export const ReportWorkflow: React.FC = () => {
               </div>
             )}
 
-            <div className="pt-2 border-t border-warm-200 text-xs text-ink-muted flex items-center gap-2">
-              <span>Reported by: <strong>{user.name}</strong> ({user.role})</span>
-              {user.studentId && <span>• ID: {user.studentId}</span>}
+            <div className="pt-2 border-t border-warm-200 text-xs text-ink-muted flex items-center justify-between">
+              <div>
+                Reported by: <strong>{isAnonymous ? 'Anonymous Student' : user.name}</strong> {!isAnonymous && `(${user.role})`}
+              </div>
+              {isAnonymous && (
+                <span className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[10px] font-semibold">
+                  Anonymous Mode Enabled
+                </span>
+              )}
             </div>
           </div>
 
@@ -518,7 +512,7 @@ export const ReportWorkflow: React.FC = () => {
               onClick={() => {
                 setTitle('');
                 setDescription('');
-                setImages([]);
+                setImageFiles([]);
                 setStep(1);
                 setCreatedIssue(null);
               }}

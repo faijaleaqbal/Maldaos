@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Issue, IssuePriority, IssueStatus } from '@/types';
+import React, { useState, useEffect } from 'react';
+import { Issue, IssueStatus } from '@/types';
 import { useIssues } from '@/context/IssuesContext';
+import { IssuesService } from '@/services/issues.service';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Input';
 import { AIAnalysisPanel } from '@/components/ai/AIAnalysisPanel';
 import { IssueStatusBadge } from '@/components/issues/IssueStatusBadge';
 import { PriorityBadge } from '@/components/issues/PriorityBadge';
-import { X, UserCheck, CheckCircle, Wrench, Clock, MapPin } from 'lucide-react';
+import { X, UserCheck, CheckCircle2, AlertCircle, MapPin } from 'lucide-react';
 
 interface AssignmentDrawerProps {
   issue: Issue | null;
@@ -17,22 +18,12 @@ interface AssignmentDrawerProps {
   onClose: () => void;
 }
 
-const STAFF_MEMBERS = [
-  { id: 'usr-staff-01', name: 'Subhashish Roy', department: 'Electrical & Facility Operations', phone: '+91 94340 77189' },
-  { id: 'usr-staff-02', name: 'Biren Mondal', department: 'Civil Works & Plumbing', phone: '+91 94342 11982' },
-  { id: 'usr-staff-03', name: 'Kallol Sarkar', department: 'Civil Works & Sanitation', phone: '+91 98320 44109' },
-  { id: 'usr-staff-04', name: 'Soumen Debnath', department: 'IT & Network Cell', phone: '+91 94341 00293' },
-  { id: 'usr-staff-05', name: 'Bikash Murmu', department: 'Campus Security & Estate Office', phone: '+91 98325 66710' },
-];
-
 const STATUS_OPTIONS: { label: string; value: IssueStatus }[] = [
-  { label: 'REPORTED', value: 'REPORTED' },
-  { label: 'AI ANALYZED', value: 'AI_ANALYZED' },
-  { label: 'ASSIGNED', value: 'ASSIGNED' },
-  { label: 'IN PROGRESS', value: 'IN_PROGRESS' },
-  { label: 'RESOLUTION SUBMITTED', value: 'RESOLUTION_SUBMITTED' },
-  { label: 'RESOLVED', value: 'RESOLVED' },
-  { label: 'CLOSED', value: 'CLOSED' },
+  { label: 'OPEN (Unassigned)', value: 'OPEN' },
+  { label: 'ASSIGNED (Dispatched)', value: 'ASSIGNED' },
+  { label: 'IN PROGRESS (Under Maintenance)', value: 'IN_PROGRESS' },
+  { label: 'RESOLVED (Completed)', value: 'RESOLVED' },
+  { label: 'CLOSED (Archived)', value: 'CLOSED' },
 ];
 
 export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
@@ -42,34 +33,89 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
 }) => {
   const { assignIssue, updateIssueStatus } = useIssues();
 
-  const [selectedStaffId, setSelectedStaffId] = useState(issue?.assignedTo?.id || STAFF_MEMBERS[0].id);
+  const [departments, setDepartments] = useState<{ id: string; name: string; code: string }[]>([]);
+  const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [targetStatus, setTargetStatus] = useState<IssueStatus>(issue?.status || 'ASSIGNED');
   const [dispatchNote, setDispatchNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setErrorMessage(null);
+      IssuesService.getDepartments().then((depts) => {
+        setDepartments(depts);
+        if (depts.length > 0) {
+          const match = depts.find((d) => d.id === issue?.departmentId || d.name === issue?.department);
+          setSelectedDeptId(match ? match.id : depts[0].id);
+        }
+      });
+      if (issue) {
+        setTargetStatus(issue.status);
+      }
+    }
+  }, [isOpen, issue]);
 
   if (!isOpen || !issue) return null;
 
-  const staffOptions = STAFF_MEMBERS.map((s) => ({
-    label: `${s.name} (${s.department})`,
-    value: s.id,
+  const departmentOptions = departments.map((d) => ({
+    label: `${d.name} (${d.code})`,
+    value: d.id,
   }));
 
   const handleAssign = async () => {
-    setIsProcessing(true);
-    const chosenStaff = STAFF_MEMBERS.find((s) => s.id === selectedStaffId) || STAFF_MEMBERS[0];
-    await assignIssue(issue.id, chosenStaff);
-    if (targetStatus && targetStatus !== issue.status) {
-      await updateIssueStatus(issue.id, targetStatus, dispatchNote);
+    try {
+      setIsProcessing(true);
+      setErrorMessage(null);
+
+      if (selectedDeptId) {
+        await assignIssue(issue.id, {
+          departmentId: selectedDeptId,
+          note: dispatchNote || undefined,
+        });
+      }
+
+      if (targetStatus && targetStatus !== issue.status) {
+        if (targetStatus === 'RESOLVED' && !dispatchNote.trim()) {
+          setErrorMessage('A resolution summary is required when transitioning status to RESOLVED.');
+          setIsProcessing(false);
+          return;
+        }
+        await updateIssueStatus(issue.id, targetStatus, dispatchNote);
+      }
+
+      onClose();
+    } catch (err: any) {
+      console.error('Assignment error:', err);
+      setErrorMessage(err.message || 'Operation failed. Check permissions.');
+    } finally {
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
-    onClose();
   };
 
   const handleQuickStatusChange = async (newStatus: IssueStatus) => {
-    setIsProcessing(true);
-    await updateIssueStatus(issue.id, newStatus, dispatchNote || `Status quickly shifted to ${newStatus}`);
-    setIsProcessing(false);
-    onClose();
+    try {
+      setIsProcessing(true);
+      setErrorMessage(null);
+
+      if (newStatus === 'RESOLVED' && !dispatchNote.trim()) {
+        setErrorMessage('Please provide a brief resolution summary in the note field before marking RESOLVED.');
+        setIsProcessing(false);
+        return;
+      }
+
+      await updateIssueStatus(
+        issue.id,
+        newStatus,
+        dispatchNote || `Operational status updated to ${newStatus}`
+      );
+      onClose();
+    } catch (err: any) {
+      console.error('Quick status transition failed:', err);
+      setErrorMessage(err.message || 'Failed to update status.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -99,10 +145,17 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
 
         {/* Content */}
         <div className="p-4 sm:p-6 space-y-6 flex-1">
+          {errorMessage && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-md flex items-center gap-2 text-xs text-rose-700">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
           {/* Metadata Grid */}
           <div className="grid grid-cols-2 gap-3 p-3 bg-warm-50 rounded-lg border border-warm-200 text-xs">
             <div>
-              <span className="text-ink-muted block text-[11px] uppercase font-medium">Status</span>
+              <span className="text-ink-muted block text-[11px] uppercase font-medium">Current Status</span>
               <IssueStatusBadge status={issue.status} />
             </div>
             <div>
@@ -133,7 +186,7 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
           {/* Evidence Photos */}
           {issue.images && issue.images.length > 0 && (
             <div className="space-y-1">
-              <h4 className="text-xs font-semibold text-ink uppercase tracking-wider">Attached Evidence</h4>
+              <h4 className="text-xs font-semibold text-ink uppercase tracking-wider">Attached Evidence ({issue.images.length})</h4>
               <div className="grid grid-cols-2 gap-2">
                 {issue.images.map((img, idx) => (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -149,26 +202,30 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
           )}
 
           {/* AI Analysis Panel */}
-          <div>
-            <h4 className="text-xs font-semibold text-ink uppercase tracking-wider mb-2">
-              Automated Triage Suggestions
-            </h4>
-            <AIAnalysisPanel analysis={issue.aiAnalysis} />
-          </div>
+          {issue.aiAnalysis && (
+            <div>
+              <h4 className="text-xs font-semibold text-ink uppercase tracking-wider mb-2">
+                Automated Triage Suggestions
+              </h4>
+              <AIAnalysisPanel analysis={issue.aiAnalysis} />
+            </div>
+          )}
 
           {/* Assignment Controls */}
           <div className="p-4 rounded-lg border border-warm-300 bg-warm-100/50 space-y-3">
             <h4 className="font-serif font-semibold text-sm text-ink flex items-center gap-1.5">
               <UserCheck className="w-4 h-4 text-maroon-700" />
-              Assign / Dispatch Maintenance Personnel
+              Dispatch Department & Transition Stage
             </h4>
 
-            <Select
-              label="Select Designated Duty Officer / Technician"
-              options={staffOptions}
-              value={selectedStaffId}
-              onChange={(e) => setSelectedStaffId(e.target.value)}
-            />
+            {departmentOptions.length > 0 && (
+              <Select
+                label="Target Maintenance Department"
+                options={departmentOptions}
+                value={selectedDeptId}
+                onChange={(e) => setSelectedDeptId(e.target.value)}
+              />
+            )}
 
             <Select
               label="Transition Ticket Status"
@@ -178,11 +235,12 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
             />
 
             <Textarea
-              label="Operational Dispatch Directive (Optional)"
+              label="Operational Directive / Resolution Summary"
               rows={2}
-              placeholder="e.g. Inspect HDMI junction box and replace coupler before 11:00 AM..."
+              placeholder="e.g. Fixed electrical wiring and restored power safely..."
               value={dispatchNote}
               onChange={(e) => setDispatchNote(e.target.value)}
+              helperText={targetStatus === 'RESOLVED' ? 'Required for RESOLVED transition.' : undefined}
             />
 
             <Button
@@ -205,26 +263,28 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
                 size="sm"
                 variant="secondary"
                 onClick={() => handleQuickStatusChange('IN_PROGRESS')}
-                disabled={issue.status === 'IN_PROGRESS'}
+                disabled={issue.status === 'IN_PROGRESS' || isProcessing}
               >
                 Mark In Progress
               </Button>
               <Button
                 size="sm"
-                variant="gold"
-                onClick={() => handleQuickStatusChange('RESOLUTION_SUBMITTED')}
-                disabled={issue.status === 'RESOLUTION_SUBMITTED'}
-              >
-                Submit Resolution
-              </Button>
-              <Button
-                size="sm"
                 variant="primary"
                 onClick={() => handleQuickStatusChange('RESOLVED')}
-                disabled={issue.status === 'RESOLVED'}
+                disabled={issue.status === 'RESOLVED' || isProcessing}
               >
-                Verify & Close
+                Verify & Mark Resolved
               </Button>
+              {issue.status === 'RESOLVED' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleQuickStatusChange('CLOSED')}
+                  disabled={isProcessing}
+                >
+                  Close & Archive
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -232,3 +292,4 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
     </div>
   );
 };
+

@@ -9,12 +9,13 @@ interface IssueStatusBadgeProps {
 }
 
 export const IssueStatusBadge: React.FC<IssueStatusBadgeProps> = ({ status, size = 'sm' }) => {
-  switch (status) {
+  switch (status as string) {
+    case 'OPEN':
     case 'REPORTED':
       return (
         <Badge variant="warning" size={size}>
           <Clock className="w-3 h-3" />
-          <span>Reported</span>
+          <span>Open</span>
         </Badge>
       );
     case 'AI_ANALYZED':

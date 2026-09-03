@@ -7,15 +7,15 @@ import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { ShieldCheck, GraduationCap, Wrench, Building2, Shield, ArrowRight } from 'lucide-react';
+import { SEED_ACCOUNTS } from '@/services/auth.service';
+import { GraduationCap, Wrench, Building2, Shield, ArrowRight, AlertCircle, Lock } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, switchRole, mockUsers } = useAuth();
+  const { login, switchRole } = useAuth();
 
-  const [email, setEmail] = useState('ananya.sen@malda-student.ac.in');
-  const [rolePreference, setRolePreference] = useState<UserRole>('STUDENT');
+  const [email, setEmail] = useState('student1@campus.test');
+  const [password, setPassword] = useState('TestPass123!');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -25,24 +25,30 @@ export default function LoginPage() {
 
     setIsLoading(true);
     setErrorMsg(null);
-    const res = await login(email.trim(), rolePreference);
+    const res = await login(email.trim(), password);
     setIsLoading(false);
 
     if (res.success) {
-      if (rolePreference === 'STUDENT') {
-        router.push('/dashboard');
-      } else {
+      if (email.includes('admin') || email.includes('staff') || email.includes('super')) {
         router.push('/admin');
+      } else {
+        router.push('/dashboard');
       }
     } else {
-      setErrorMsg(res.error || 'Authentication failed');
+      setErrorMsg(res.error || 'Authentication failed. Please verify credentials.');
     }
   };
 
-  const handleQuickPersona = (targetRole: UserRole, targetEmail: string) => {
-    setEmail(targetEmail);
-    setRolePreference(targetRole);
-    switchRole(targetRole);
+  const handleQuickPersona = async (targetRole: UserRole) => {
+    const creds = SEED_ACCOUNTS[targetRole];
+    setEmail(creds.email);
+    setPassword(creds.pass);
+    setIsLoading(true);
+    setErrorMsg(null);
+
+    await switchRole(targetRole);
+    setIsLoading(false);
+
     if (targetRole === 'STUDENT') {
       router.push('/dashboard');
     } else {
@@ -71,29 +77,31 @@ export default function LoginPage() {
 
         {/* Login Form */}
         <div className="rounded-xl border border-warm-300 bg-white p-6 shadow-card space-y-5">
+          {errorMsg && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-md flex items-center gap-2 text-xs text-rose-700">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-4">
             <Input
               label="Institutional Email Address *"
               type="email"
-              placeholder="e.g. yourname@malda-student.ac.in"
+              placeholder="e.g. student1@campus.test"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
 
-            <Select
-              label="Role Access Mode *"
-              value={rolePreference}
-              onChange={(e) => setRolePreference(e.target.value as UserRole)}
-              options={[
-                { label: 'Student Persona', value: 'STUDENT' },
-                { label: 'Maintenance Staff / Technician', value: 'STAFF' },
-                { label: 'Department Infrastructure Admin', value: 'DEPARTMENT_ADMIN' },
-                { label: 'Super Admin (Principal / Dean)', value: 'SUPER_ADMIN' },
-              ]}
+            <Input
+              label="Password *"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
             />
-
-            {errorMsg && <p className="text-xs text-rose-600 font-medium">{errorMsg}</p>}
 
             <Button
               type="submit"
@@ -102,45 +110,69 @@ export default function LoginPage() {
               isLoading={isLoading}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
-              Sign In to Malda College Node
+              Sign In with Authoritative Supabase Auth
             </Button>
           </form>
 
           {/* 1-Click Evaluation Persona Switchers */}
           <div className="pt-4 border-t border-warm-200">
             <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider block mb-2 text-center">
-              Quick 1-Click Persona Sign-In (For Evaluators)
+              Quick 1-Click Seed Account Login
             </span>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => handleQuickPersona('STUDENT', mockUsers.student.email)}
-                className="p-2 rounded border border-warm-300 hover:border-maroon-700 hover:bg-warm-50 text-left text-xs transition-colors cursor-pointer"
+                onClick={() => handleQuickPersona('STUDENT')}
+                className="p-2.5 rounded border border-warm-300 hover:border-maroon-700 hover:bg-warm-50 text-left text-xs transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-1 font-semibold text-ink">
                   <GraduationCap className="w-3.5 h-3.5 text-maroon-700" />
                   <span>Student</span>
                 </div>
-                <span className="text-[10px] text-ink-muted block truncate">{mockUsers.student.name}</span>
+                <span className="text-[10px] text-ink-muted block truncate">student1@campus.test</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleQuickPersona('SUPER_ADMIN', mockUsers.superAdmin.email)}
-                className="p-2 rounded border border-warm-300 hover:border-maroon-700 hover:bg-warm-50 text-left text-xs transition-colors cursor-pointer"
+                onClick={() => handleQuickPersona('STAFF')}
+                className="p-2.5 rounded border border-warm-300 hover:border-maroon-700 hover:bg-warm-50 text-left text-xs transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-1 font-semibold text-ink">
+                  <Wrench className="w-3.5 h-3.5 text-maroon-700" />
+                  <span>Maintenance Staff</span>
+                </div>
+                <span className="text-[10px] text-ink-muted block truncate">staff.cse@campus.test</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickPersona('DEPARTMENT_ADMIN')}
+                className="p-2.5 rounded border border-warm-300 hover:border-maroon-700 hover:bg-warm-50 text-left text-xs transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-1 font-semibold text-ink">
+                  <Building2 className="w-3.5 h-3.5 text-maroon-700" />
+                  <span>Dept Admin</span>
+                </div>
+                <span className="text-[10px] text-ink-muted block truncate">admin.cse@campus.test</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickPersona('SUPER_ADMIN')}
+                className="p-2.5 rounded border border-warm-300 hover:border-maroon-700 hover:bg-warm-50 text-left text-xs transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-1 font-semibold text-ink">
                   <Shield className="w-3.5 h-3.5 text-maroon-700" />
-                  <span>Admin Console</span>
+                  <span>Super Admin</span>
                 </div>
-                <span className="text-[10px] text-ink-muted block truncate">Principal Office</span>
+                <span className="text-[10px] text-ink-muted block truncate">super@campus.test</span>
               </button>
             </div>
           </div>
         </div>
 
         <div className="text-center text-xs text-ink-muted">
-          Don't have an active registration yet?{' '}
+          Don&apos;t have an active registration yet?{' '}
           <Link href="/register" className="font-semibold text-maroon-800 hover:underline">
             Register Student / Staff ID
           </Link>
@@ -149,3 +181,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

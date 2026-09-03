@@ -46,7 +46,7 @@ export default function HomePage() {
   };
 
   const recentIssues = issues.slice(0, 3);
-  const criticalIssue = issues.find((i) => i.priority === 'CRITICAL' && i.status !== 'RESOLVED');
+  const criticalIssue = issues.find((i) => i.priority === 'URGENT' && i.status !== 'RESOLVED' && i.status !== 'CLOSED');
 
   return (
     <div className="space-y-10 pb-12">

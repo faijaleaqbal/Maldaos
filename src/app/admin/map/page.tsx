@@ -36,7 +36,7 @@ export default function AdminMapPage() {
     const code = iss.location.buildingCode;
     if (buildingCounts[code]) {
       buildingCounts[code].total++;
-      if (iss.priority === 'CRITICAL' && iss.status !== 'RESOLVED') {
+      if (iss.priority === 'URGENT' && iss.status !== 'RESOLVED' && iss.status !== 'CLOSED') {
         buildingCounts[code].critical++;
       }
     }

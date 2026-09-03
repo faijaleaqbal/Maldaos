@@ -75,7 +75,7 @@ export default function IssuesListPage() {
     }
     if (sortBy === 'PRIORITY') {
       const priorityWeights: Record<IssuePriority, number> = {
-        CRITICAL: 4,
+        URGENT: 4,
         HIGH: 3,
         MEDIUM: 2,
         LOW: 1,

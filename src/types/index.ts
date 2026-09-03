@@ -13,24 +13,19 @@ export interface User {
 }
 
 export type IssueCategory =
-  | 'ELECTRICAL'
-  | 'PLUMBING'
-  | 'IT_NETWORK'
-  | 'FACILITY_CLASSROOM'
-  | 'LAB_EQUIPMENT'
-  | 'SANITATION'
-  | 'SAFETY_SECURITY'
+  | 'INFRASTRUCTURE'
+  | 'ACADEMICS'
   | 'HOSTEL'
+  | 'CLEANLINESS'
+  | 'SAFETY'
   | 'OTHER';
 
-export type IssuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type IssuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
 export type IssueStatus =
-  | 'REPORTED'
-  | 'AI_ANALYZED'
+  | 'OPEN'
   | 'ASSIGNED'
   | 'IN_PROGRESS'
-  | 'RESOLUTION_SUBMITTED'
   | 'RESOLVED'
   | 'CLOSED';
 
@@ -106,6 +101,8 @@ export interface Issue {
   priority: IssuePriority;
   status: IssueStatus;
   location: CampusLocation;
+  locationId?: string;
+  departmentId?: string | null;
   reporter: {
     id: string;
     name: string;
@@ -125,9 +122,11 @@ export interface Issue {
   images: string[];
   upvotes: number;
   upvotedBy: string[];
+  isAnonymous?: boolean;
+  resolutionSummary?: string | null;
   createdAt: string;
   updatedAt: string;
-  resolvedAt?: string;
+  resolvedAt?: string | null;
   aiAnalysis?: AIAnalysis;
   timeline: TimelineEvent[];
   comments: IssueComment[];

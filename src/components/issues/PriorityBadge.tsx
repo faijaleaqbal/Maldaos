@@ -10,12 +10,13 @@ interface PriorityBadgeProps {
 }
 
 export const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority, size = 'sm', prefix = '' }) => {
-  switch (priority) {
+  switch (priority as string) {
+    case 'URGENT':
     case 'CRITICAL':
       return (
         <Badge variant="danger" size={size} className="bg-rose-100 text-rose-900 border-rose-300 font-semibold">
           <Flame className="w-3 h-3 text-rose-600 shrink-0" />
-          <span>{prefix}Critical</span>
+          <span>{prefix}Urgent</span>
         </Badge>
       );
     case 'HIGH':

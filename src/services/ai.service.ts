@@ -46,63 +46,42 @@ export const AIService = {
     const urgencyFactors: string[] = [];
 
     // Keyword intelligence
-    if (text.includes('spark') || text.includes('fire') || text.includes('arcing') || text.includes('shock') || text.includes('short circuit') || text.includes('gas')) {
-      detectedCategory = 'ELECTRICAL';
-      suggestedPriority = 'CRITICAL';
-      suggestedDepartment = 'Electrical & Facility Operations';
+    if (text.includes('spark') || text.includes('fire') || text.includes('arcing') || text.includes('shock') || text.includes('short circuit') || text.includes('gas') || text.includes('danger')) {
+      detectedCategory = 'SAFETY';
+      suggestedPriority = 'URGENT';
+      suggestedDepartment = 'Campus Security & Electrical Maintenance';
       confidence = 0.98;
       urgencyFactors.push('Immediate life safety or electrical fire risk detected');
       urgencyFactors.push('Urgent physical isolation recommended');
-    } else if (text.includes('wire') || text.includes('switch') || text.includes('light') || text.includes('bulb') || text.includes('power') || text.includes('breaker') || text.includes('fan')) {
-      detectedCategory = 'ELECTRICAL';
-      suggestedPriority = text.includes('blackout') || text.includes('hall') ? 'HIGH' : 'MEDIUM';
-      suggestedDepartment = 'Electrical & Facility Operations';
-      confidence = 0.91;
-      urgencyFactors.push('Electrical fixture degradation reported');
-    } else if (text.includes('leak') || text.includes('water') || text.includes('cooler') || text.includes('tap') || text.includes('pipe') || text.includes('drain') || text.includes('washroom') || text.includes('toilet') || text.includes('flood')) {
-      detectedCategory = 'PLUMBING';
-      suggestedPriority = text.includes('flood') || text.includes('corridor') || text.includes('slip') ? 'HIGH' : 'MEDIUM';
-      suggestedDepartment = 'Civil Works & Plumbing';
-      confidence = 0.94;
-      if (text.includes('slip') || text.includes('corridor')) {
-        urgencyFactors.push('Slip and fall hazard in pedestrian corridor');
-      }
-      urgencyFactors.push('Continuous water resource loss or potential masonry dampness');
-    } else if (text.includes('wifi') || text.includes('wi-fi') || text.includes('network') || text.includes('internet') || text.includes('router') || text.includes('lan') || text.includes('server') || text.includes('access point') || text.includes('signal')) {
-      detectedCategory = 'IT_NETWORK';
-      suggestedPriority = text.includes('library') || text.includes('exam') || text.includes('lab') ? 'HIGH' : 'MEDIUM';
-      suggestedDepartment = 'IT & Network Cell';
+    } else if (text.includes('wire') || text.includes('switch') || text.includes('light') || text.includes('bulb') || text.includes('power') || text.includes('breaker') || text.includes('fan') || text.includes('leak') || text.includes('water') || text.includes('pipe') || text.includes('wall') || text.includes('roof')) {
+      detectedCategory = 'INFRASTRUCTURE';
+      suggestedPriority = text.includes('blackout') || text.includes('hall') || text.includes('flood') ? 'HIGH' : 'MEDIUM';
+      suggestedDepartment = 'Campus Infrastructure Maintenance';
       confidence = 0.92;
-      urgencyFactors.push('Impacts digital academic services or examination connectivity');
-    } else if (text.includes('projector') || text.includes('screen') || text.includes('bench') || text.includes('blackboard') || text.includes('desk') || text.includes('podium') || text.includes('classroom') || text.includes('lecture')) {
-      detectedCategory = 'FACILITY_CLASSROOM';
-      suggestedPriority = 'HIGH';
-      suggestedDepartment = 'Academic Infrastructure & IQAC';
+      urgencyFactors.push('Physical facility or electrical fixture degradation reported');
+    } else if (text.includes('wifi') || text.includes('wi-fi') || text.includes('network') || text.includes('projector') || text.includes('bench') || text.includes('blackboard') || text.includes('desk') || text.includes('classroom') || text.includes('lecture') || text.includes('lab') || text.includes('computer')) {
+      detectedCategory = 'ACADEMICS';
+      suggestedPriority = text.includes('exam') || text.includes('lecture') ? 'HIGH' : 'MEDIUM';
+      suggestedDepartment = 'Academic Infrastructure & IT Cell';
       confidence = 0.93;
-      urgencyFactors.push('Directly disrupts ongoing classroom instruction');
-    } else if (text.includes('computer') || text.includes('pc') || text.includes('keyboard') || text.includes('microscope') || text.includes('centrifuge') || text.includes('apparatus') || text.includes('lab') || text.includes('workstation')) {
-      detectedCategory = 'LAB_EQUIPMENT';
-      suggestedPriority = 'MEDIUM';
-      suggestedDepartment = 'IT & Network Cell';
-      confidence = 0.89;
-      urgencyFactors.push('Laboratory workstation unavailability');
-    } else if (text.includes('garbage') || text.includes('waste') || text.includes('trash') || text.includes('smell') || text.includes('stink') || text.includes('clean') || text.includes('dirt') || text.includes('canteen')) {
-      detectedCategory = 'SANITATION';
+      urgencyFactors.push('Impacts ongoing classroom instruction or lab sessions');
+    } else if (text.includes('garbage') || text.includes('waste') || text.includes('trash') || text.includes('smell') || text.includes('stink') || text.includes('clean') || text.includes('dirt') || text.includes('toilet') || text.includes('washroom') || text.includes('canteen')) {
+      detectedCategory = 'CLEANLINESS';
       suggestedPriority = text.includes('canteen') ? 'HIGH' : 'MEDIUM';
-      suggestedDepartment = 'Civil Works & Sanitation';
-      confidence = 0.90;
-      urgencyFactors.push('Hygiene standards in shared student dining or common area');
-    } else if (text.includes('stair') || text.includes('lock') || text.includes('guard') || text.includes('gate') || text.includes('theft') || text.includes('rail') || text.includes('danger') || text.includes('fall')) {
-      detectedCategory = 'SAFETY_SECURITY';
+      suggestedDepartment = 'Sanitation & Housekeeping';
+      confidence = 0.91;
+      urgencyFactors.push('Hygiene standards in shared student facilities or dining areas');
+    } else if (text.includes('stair') || text.includes('lock') || text.includes('guard') || text.includes('gate') || text.includes('theft') || text.includes('rail') || text.includes('harassment') || text.includes('threat')) {
+      detectedCategory = 'SAFETY';
       suggestedPriority = 'HIGH';
       suggestedDepartment = 'Campus Security & Estate Office';
-      confidence = 0.92;
-      urgencyFactors.push('Physical security or perimeter integrity concern');
+      confidence = 0.94;
+      urgencyFactors.push('Physical safety or perimeter security concern');
     } else if (text.includes('hostel') || text.includes('mess') || text.includes('room') || text.includes('bed') || text.includes('warden')) {
       detectedCategory = 'HOSTEL';
       suggestedPriority = 'MEDIUM';
       suggestedDepartment = 'Hostel Superintendent Office';
-      confidence = 0.87;
+      confidence = 0.89;
       urgencyFactors.push('Residential student accommodation welfare');
     }
 

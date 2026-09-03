@@ -58,8 +58,8 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({ isOpen, on
     },
   ];
 
-  const handleSelect = (r: UserRole) => {
-    switchRole(r);
+  const handleSelect = async (r: UserRole) => {
+    await switchRole(r);
     onClose();
   };
 

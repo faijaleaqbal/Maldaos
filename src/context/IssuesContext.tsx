@@ -1,11 +1,25 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { AnalyticsSummary, Issue, IssueCategory, IssuePriority, IssueStatus, TimelineEvent } from '@/types';
-import { IssuesService } from '@/services/issues.service';
+import { AnalyticsSummary, Issue, IssueCategory, IssuePriority, IssueStatus, TimelineEvent, CampusLocation } from '@/types';
+import { IssuesService, CreateIssueInput } from '@/services/issues.service';
 import { AnalyticsService } from '@/services/analytics.service';
 import { NotificationService } from '@/services/notifications.service';
 import { useAuth } from './AuthContext';
+
+export interface CreateIssueParams {
+  title: string;
+  description: string;
+  category: IssueCategory;
+  priority: IssuePriority;
+  location: CampusLocation;
+  locationId?: string;
+  departmentId?: string | null;
+  isAnonymous?: boolean;
+  images?: string[];
+  imageFiles?: File[];
+  customTimeline?: TimelineEvent[];
+}
 
 interface IssuesContextType {
   issues: Issue[];
@@ -13,15 +27,12 @@ interface IssuesContextType {
   error: string | null;
   summary: AnalyticsSummary;
   refreshIssues: () => Promise<void>;
-  createIssue: (
-    data: Omit<Issue, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt' | 'upvotes' | 'upvotedBy' | 'timeline' | 'comments'> & {
-      customTimeline?: TimelineEvent[];
-    }
-  ) => Promise<Issue>;
+  createIssue: (data: CreateIssueParams) => Promise<Issue>;
   updateIssueStatus: (id: string, newStatus: IssueStatus, note?: string) => Promise<Issue | null>;
-  assignIssue: (id: string, staff: { id: string; name: string; department: string; phone?: string }) => Promise<Issue | null>;
-  addComment: (issueId: string, content: string) => Promise<void>;
+  assignIssue: (id: string, params: { departmentId: string; staffId?: string; note?: string }) => Promise<Issue | null>;
+  addComment: (issueId: string, content: string, isInternal?: boolean) => Promise<void>;
   toggleUpvote: (issueId: string) => Promise<void>;
+  uploadResolutionProof: (issueId: string, file: File) => Promise<string>;
   resetData: () => void;
 }
 
@@ -40,7 +51,8 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const data = await IssuesService.getAllIssues();
       setIssues(data);
     } catch (err: any) {
-      setError(err.message || 'Failed to load issues');
+      console.error('refreshIssues error:', err);
+      setError(err.message || 'Failed to load issues from database');
     } finally {
       setLoading(false);
     }
@@ -48,29 +60,42 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     refreshIssues();
-  }, [refreshIssues]);
+  }, [refreshIssues, user.id, user.role]);
 
   const summary = React.useMemo(() => {
     return AnalyticsService.calculateSummary(issues);
   }, [issues]);
 
-  const createIssue = async (
-    data: Omit<Issue, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt' | 'upvotes' | 'upvotedBy' | 'timeline' | 'comments'> & {
-      customTimeline?: TimelineEvent[];
+  const createIssue = async (data: CreateIssueParams): Promise<Issue> => {
+    try {
+      setError(null);
+      const input: CreateIssueInput = {
+        ...data,
+        reporter: {
+          id: user.id,
+          name: user.name,
+          role: user.role,
+          studentId: user.studentId,
+          department: user.department,
+        },
+      };
+
+      const created = await IssuesService.createIssue(input);
+      setIssues((prev) => [created, ...prev.filter((i) => i.id !== created.id)]);
+
+      NotificationService.addNotification({
+        title: 'New Issue Registered',
+        message: `Ticket ${created.ticketNumber} lodged for ${created.location.building}.`,
+        ticketNumber: created.ticketNumber,
+        ticketId: created.id,
+        type: 'STATUS_CHANGE',
+      });
+
+      return created;
+    } catch (err: any) {
+      setError(err.message || 'Failed to create issue');
+      throw err;
     }
-  ): Promise<Issue> => {
-    const created = await IssuesService.createIssue(data);
-    setIssues((prev) => [created, ...prev]);
-
-    NotificationService.addNotification({
-      title: 'New Issue Registered',
-      message: `Ticket ${created.ticketNumber} lodged for ${created.location.building}. AI triage initiated.`,
-      ticketNumber: created.ticketNumber,
-      ticketId: created.id,
-      type: 'STATUS_CHANGE',
-    });
-
-    return created;
   };
 
   const updateIssueStatus = async (
@@ -78,77 +103,122 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     newStatus: IssueStatus,
     note?: string
   ): Promise<Issue | null> => {
-    const actor = { name: user.name, role: user.role };
-    const updated = await IssuesService.updateIssueStatus(id, newStatus, actor, note);
-    if (updated) {
-      setIssues((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    try {
+      setError(null);
+      const actor = { name: user.name, role: user.role };
+      const updated = await IssuesService.updateIssueStatus(id, newStatus, actor, note);
+      if (updated) {
+        setIssues((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
 
-      NotificationService.addNotification({
-        title: `Ticket ${updated.ticketNumber} Updated`,
-        message: `Status transitioned to ${newStatus.replace('_', ' ')} by ${user.name}.`,
-        ticketNumber: updated.ticketNumber,
-        ticketId: updated.id,
-        type: newStatus === 'RESOLVED' ? 'RESOLVED' : 'STATUS_CHANGE',
-      });
+        NotificationService.addNotification({
+          title: `Ticket ${updated.ticketNumber} Updated`,
+          message: `Status transitioned to ${newStatus.replace('_', ' ')} by ${user.name}.`,
+          ticketNumber: updated.ticketNumber,
+          ticketId: updated.id,
+          type: newStatus === 'RESOLVED' ? 'RESOLVED' : 'STATUS_CHANGE',
+        });
+      }
+      return updated;
+    } catch (err: any) {
+      setError(err.message || 'Failed to update issue status');
+      throw err;
     }
-    return updated;
   };
 
   const assignIssue = async (
     id: string,
-    staff: { id: string; name: string; department: string; phone?: string }
+    params: { departmentId: string; staffId?: string; note?: string }
   ): Promise<Issue | null> => {
-    const actor = { name: user.name, role: user.role };
-    const updated = await IssuesService.assignIssue(id, staff, actor);
-    if (updated) {
-      setIssues((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    try {
+      setError(null);
+      const actor = { name: user.name, role: user.role };
+      const updated = await IssuesService.assignIssue(id, params, actor);
+      if (updated) {
+        setIssues((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
 
-      NotificationService.addNotification({
-        title: `Work Order Dispatched: ${updated.ticketNumber}`,
-        message: `Assigned to ${staff.name} (${staff.department}).`,
-        ticketNumber: updated.ticketNumber,
-        ticketId: updated.id,
-        type: 'ASSIGNED',
-      });
+        NotificationService.addNotification({
+          title: `Work Order Dispatched: ${updated.ticketNumber}`,
+          message: `Assigned to department: ${params.departmentId}.`,
+          ticketNumber: updated.ticketNumber,
+          ticketId: updated.id,
+          type: 'ASSIGNED',
+        });
+      }
+      return updated;
+    } catch (err: any) {
+      setError(err.message || 'Failed to assign issue');
+      throw err;
     }
-    return updated;
   };
 
-  const addComment = async (issueId: string, content: string): Promise<void> => {
-    const comment = await IssuesService.addComment(issueId, content, {
-      id: user.id,
-      name: user.name,
-      role: user.role,
-      department: user.department,
-    });
-    if (comment) {
-      setIssues((prev) =>
-        prev.map((iss) => {
-          if (iss.id === issueId || iss.ticketNumber === issueId) {
-            return {
-              ...iss,
-              comments: [...(iss.comments || []), comment],
-            };
-          }
-          return iss;
-        })
+  const addComment = async (issueId: string, content: string, isInternal = false): Promise<void> => {
+    try {
+      setError(null);
+      const comment = await IssuesService.addComment(
+        issueId,
+        content,
+        {
+          id: user.id,
+          name: user.name,
+          role: user.role,
+          department: user.department,
+        },
+        isInternal
       );
+      if (comment) {
+        setIssues((prev) =>
+          prev.map((iss) => {
+            if (iss.id === issueId || iss.ticketNumber === issueId) {
+              return {
+                ...iss,
+                comments: [...(iss.comments || []), comment],
+              };
+            }
+            return iss;
+          })
+        );
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to add comment');
+      throw err;
     }
   };
 
   const toggleUpvote = async (issueId: string): Promise<void> => {
-    const { upvotes, userUpvoted } = await IssuesService.toggleUpvote(issueId, user.id);
-    setIssues((prev) =>
-      prev.map((iss) => {
-        if (iss.id === issueId || iss.ticketNumber === issueId) {
-          const upvotedBy = userUpvoted
-            ? [...(iss.upvotedBy || []), user.id]
-            : (iss.upvotedBy || []).filter((uid) => uid !== user.id);
-          return { ...iss, upvotes, upvotedBy };
-        }
-        return iss;
-      })
-    );
+    try {
+      setError(null);
+      const { upvotes, userUpvoted } = await IssuesService.toggleUpvote(issueId, user.id);
+      setIssues((prev) =>
+        prev.map((iss) => {
+          if (iss.id === issueId || iss.ticketNumber === issueId) {
+            const upvotedBy = userUpvoted
+              ? [...(iss.upvotedBy || []), user.id]
+              : (iss.upvotedBy || []).filter((uid) => uid !== user.id);
+            return { ...iss, upvotes, upvotedBy };
+          }
+          return iss;
+        })
+      );
+    } catch (err: any) {
+      setError(err.message || 'Failed to vote');
+      throw err;
+    }
+  };
+
+  const uploadResolutionProof = async (issueId: string, file: File): Promise<string> => {
+    try {
+      setError(null);
+      const signedUrl = await IssuesService.uploadResolutionProof(issueId, file);
+      // Refresh issue to update timeline and images
+      const refreshed = await IssuesService.getIssueById(issueId);
+      if (refreshed) {
+        setIssues((prev) => prev.map((i) => (i.id === refreshed.id ? refreshed : i)));
+      }
+      return signedUrl;
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload proof');
+      throw err;
+    }
   };
 
   const resetData = () => {
@@ -168,6 +238,7 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         assignIssue,
         addComment,
         toggleUpvote,
+        uploadResolutionProof,
         resetData,
       }}
     >
@@ -183,3 +254,4 @@ export const useIssues = () => {
   }
   return context;
 };
+

@@ -46,7 +46,7 @@ export default function StudentDashboardPage() {
     (i) => i.status === 'RESOLVED' || i.status === 'CLOSED'
   ).length;
 
-  const criticalCampusIncident = campusActiveIssues.find((i) => i.priority === 'CRITICAL');
+  const criticalCampusIncident = campusActiveIssues.find((i) => i.priority === 'URGENT');
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">

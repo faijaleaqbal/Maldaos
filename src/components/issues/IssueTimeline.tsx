@@ -11,31 +11,28 @@ interface IssueTimelineProps {
 }
 
 const STAGES: { status: IssueStatus; label: string; icon: any }[] = [
-  { status: 'REPORTED', label: 'Reported', icon: Clock },
-  { status: 'AI_ANALYZED', label: 'AI Analysis', icon: Cpu },
-  { status: 'ASSIGNED', label: 'Assigned', icon: UserCheck },
+  { status: 'OPEN', label: 'Logged', icon: Clock },
+  { status: 'ASSIGNED', label: 'Dispatched', icon: UserCheck },
   { status: 'IN_PROGRESS', label: 'In Progress', icon: Wrench },
-  { status: 'RESOLUTION_SUBMITTED', label: 'Resolution Submitted', icon: Check },
   { status: 'RESOLVED', label: 'Resolved', icon: CheckCircle2 },
+  { status: 'CLOSED', label: 'Closed', icon: Check },
 ];
 
 const getStatusRank = (s: IssueStatus): number => {
-  switch (s) {
+  switch (s as string) {
+    case 'OPEN':
     case 'REPORTED':
       return 1;
-    case 'AI_ANALYZED':
-      return 2;
     case 'ASSIGNED':
-      return 3;
+      return 2;
     case 'IN_PROGRESS':
-      return 4;
-    case 'RESOLUTION_SUBMITTED':
-      return 5;
+      return 3;
     case 'RESOLVED':
+      return 4;
     case 'CLOSED':
-      return 6;
+      return 5;
     default:
-      return 0;
+      return 1;
   }
 };
 

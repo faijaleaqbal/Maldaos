@@ -152,7 +152,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     ticketNumber: 'MC-2027-0104',
     title: 'Ceiling Projector intermittently flickering & HDMI signal dropping in Centenary Hall',
     description: 'During 3rd year Computer Science and Mathematics lectures, the ceiling mounted BenQ projector in Room 204 shuts off after 10-15 minutes of operation. The wall HDMI plate appears loose with bent contact pins.',
-    category: 'FACILITY_CLASSROOM',
+    category: 'ACADEMICS',
     priority: 'HIGH',
     status: 'IN_PROGRESS',
     location: {
@@ -184,7 +184,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     createdAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
     aiAnalysis: {
-      detectedCategory: 'FACILITY_CLASSROOM',
+      detectedCategory: 'ACADEMICS',
       suggestedSeverity: 'HIGH',
       suggestedPriority: 'HIGH',
       confidence: 0.92,
@@ -210,7 +210,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     timeline: [
       {
         id: 'tl-1',
-        status: 'REPORTED',
+        status: 'OPEN',
         label: 'Issue Lodged by Student',
         description: 'Report filed with classroom location and photo evidence.',
         timestamp: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
@@ -218,7 +218,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
       },
       {
         id: 'tl-2',
-        status: 'AI_ANALYZED',
+        status: 'OPEN',
         label: 'AI Operational Triage Complete',
         description: 'Auto-categorized as FACILITY_CLASSROOM. Suggested Priority: HIGH (Confidence: 92%). Flagged possible hardware fatigue.',
         timestamp: new Date(Date.now() - 35 * 3600 * 1000).toISOString(),
@@ -273,7 +273,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     ticketNumber: 'MC-2027-0108',
     title: 'Water cooler overflow and pipe leakage on 2nd Floor corridor, Vidyasagar Bhavan',
     description: 'The stainless steel drinking water cooler outside the Physics Optics Lab is leaking from its drainage pipe. Water has pooled across the corridor, creating a slipping hazard near the stairs.',
-    category: 'PLUMBING',
+    category: 'INFRASTRUCTURE',
     priority: 'HIGH',
     status: 'ASSIGNED',
     location: {
@@ -305,7 +305,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     createdAt: new Date(Date.now() - 14 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     aiAnalysis: {
-      detectedCategory: 'PLUMBING',
+      detectedCategory: 'INFRASTRUCTURE',
       suggestedSeverity: 'HIGH',
       suggestedPriority: 'HIGH',
       confidence: 0.95,
@@ -322,7 +322,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     timeline: [
       {
         id: 'tl-201',
-        status: 'REPORTED',
+        status: 'OPEN',
         label: 'Reported by Student',
         description: 'Hazard report submitted with location tag.',
         timestamp: new Date(Date.now() - 14 * 3600 * 1000).toISOString(),
@@ -330,7 +330,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
       },
       {
         id: 'tl-202',
-        status: 'AI_ANALYZED',
+        status: 'OPEN',
         label: 'Safety Hazard Identified by AI',
         description: 'Flagged as high-urgency physical safety hazard due to stair proximity.',
         timestamp: new Date(Date.now() - 13 * 3600 * 1000).toISOString(),
@@ -352,9 +352,9 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     ticketNumber: 'MC-2027-0112',
     title: 'High latency and frequent SSID dropouts in Central Library Digital Research Section',
     description: 'Students preparing for upcoming semester projects are unable to connect to the "MaldaCollege_Student_5G" access point in the eastern reading hall. Pings to gateway time out intermittently.',
-    category: 'IT_NETWORK',
+    category: 'ACADEMICS',
     priority: 'MEDIUM',
-    status: 'REPORTED',
+    status: 'OPEN',
     location: {
       building: 'Central Library & Digital Knowledge Center',
       buildingCode: 'LIB-CENTRAL',
@@ -376,7 +376,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     createdAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
     aiAnalysis: {
-      detectedCategory: 'IT_NETWORK',
+      detectedCategory: 'ACADEMICS',
       suggestedSeverity: 'MEDIUM',
       suggestedPriority: 'MEDIUM',
       confidence: 0.88,
@@ -401,7 +401,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     timeline: [
       {
         id: 'tl-301',
-        status: 'REPORTED',
+        status: 'OPEN',
         label: 'Issue Submitted',
         description: 'Network connectivity ticket created with affected SSID and location.',
         timestamp: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
@@ -409,7 +409,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
       },
       {
         id: 'tl-302',
-        status: 'AI_ANALYZED',
+        status: 'OPEN',
         label: 'AI Network Triage',
         description: 'AI detected IT_NETWORK; recommended priority MEDIUM, auto-routed to IT Cell queue.',
         timestamp: new Date(Date.now() - 5.8 * 3600 * 1000).toISOString(),
@@ -423,8 +423,8 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     ticketNumber: 'MC-2027-0119',
     title: 'Main circuit breaker sparking in Chemistry Lab 3 Fume Exhaust board',
     description: 'Audible arcing and intermittent burning smell noticed from sub-distribution board DB-C3 behind fume chamber 2 during organic chemistry practical class. Lab assistant has temporarily flipped master isolator.',
-    category: 'ELECTRICAL',
-    priority: 'CRITICAL',
+    category: 'INFRASTRUCTURE',
+    priority: 'URGENT',
     status: 'IN_PROGRESS',
     location: {
       building: 'Vidyasagar Bhavan (Science & Tech Block)',
@@ -454,9 +454,9 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     createdAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 1 * 3600 * 1000).toISOString(),
     aiAnalysis: {
-      detectedCategory: 'ELECTRICAL',
-      suggestedSeverity: 'CRITICAL',
-      suggestedPriority: 'CRITICAL',
+      detectedCategory: 'INFRASTRUCTURE',
+      suggestedSeverity: 'URGENT',
+      suggestedPriority: 'URGENT',
       confidence: 0.98,
       summary: 'Electrical arcing with combustion hazard in chemical laboratory environment. Immediate physical isolation mandated.',
       suggestedDepartment: 'Electrical & Facility Operations',
@@ -472,7 +472,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     timeline: [
       {
         id: 'tl-401',
-        status: 'REPORTED',
+        status: 'OPEN',
         label: 'Emergency Alert Logged',
         description: 'Faculty logged electrical sparking event in Chemistry Lab.',
         timestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
@@ -480,7 +480,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
       },
       {
         id: 'tl-402',
-        status: 'AI_ANALYZED',
+        status: 'OPEN',
         label: 'AI Priority Escalation: CRITICAL',
         description: 'System automatically triggered High Severity Protocol due to electrical arc in lab setting.',
         timestamp: new Date(Date.now() - 2.9 * 3600 * 1000).toISOString(),
@@ -523,7 +523,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     ticketNumber: 'MC-2027-0095',
     title: 'Faulty motor and vibration in College Canteen main kitchen exhaust',
     description: 'Heavy grease build-up and noisy vibration in the primary exhaust chimney was filling the indoor dining area with cooking fumes during lunch peak hours.',
-    category: 'SANITATION',
+    category: 'CLEANLINESS',
     priority: 'MEDIUM',
     status: 'RESOLVED',
     location: {
@@ -554,7 +554,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     timeline: [
       {
         id: 'tl-501',
-        status: 'REPORTED',
+        status: 'OPEN',
         label: 'Report Submitted',
         description: 'Student complaint regarding smoke and ventilation.',
         timestamp: new Date(Date.now() - 72 * 3600 * 1000).toISOString(),
@@ -570,7 +570,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
       },
       {
         id: 'tl-503',
-        status: 'RESOLUTION_SUBMITTED',
+        status: 'IN_PROGRESS',
         label: 'Maintenance Completed',
         description: 'Exhaust motor replaced, fan blades degreased and balanced.',
         timestamp: new Date(Date.now() - 14 * 3600 * 1000).toISOString(),
@@ -592,7 +592,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     ticketNumber: 'MC-2027-0088',
     title: 'Workstation 14 continuous beep and memory POST failure in BCA Lab 2',
     description: 'PC number 14 in BCA Laboratory 2 fails to boot into Ubuntu OS, giving 3 short beeps indicating RAM seat defect.',
-    category: 'LAB_EQUIPMENT',
+    category: 'ACADEMICS',
     priority: 'LOW',
     status: 'RESOLVED',
     location: {
@@ -624,9 +624,9 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     ticketNumber: 'MC-2027-0125',
     title: 'Loose wooden handrail on eastern emergency staircase, Vidyasagar Bhavan',
     description: 'The support brackets anchoring the handrail to the masonry between the 1st and 2nd floors have pulled out. Students rushing between lectures have almost lost balance.',
-    category: 'SAFETY_SECURITY',
+    category: 'SAFETY',
     priority: 'HIGH',
-    status: 'REPORTED',
+    status: 'OPEN',
     location: {
       building: 'Vidyasagar Bhavan (Science & Tech Block)',
       buildingCode: 'VID-BHAVAN',
@@ -648,7 +648,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     aiAnalysis: {
-      detectedCategory: 'SAFETY_SECURITY',
+      detectedCategory: 'SAFETY',
       suggestedSeverity: 'HIGH',
       suggestedPriority: 'HIGH',
       confidence: 0.94,
@@ -665,7 +665,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
     timeline: [
       {
         id: 'tl-701',
-        status: 'REPORTED',
+        status: 'OPEN',
         label: 'Incident Reported',
         description: 'Report filed with photo evidence.',
         timestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
@@ -673,7 +673,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
       },
       {
         id: 'tl-702',
-        status: 'AI_ANALYZED',
+        status: 'OPEN',
         label: 'AI Safety Assessment Complete',
         description: 'Auto-categorized as SAFETY_SECURITY with suggested HIGH priority.',
         timestamp: new Date(Date.now() - 1.9 * 3600 * 1000).toISOString(),

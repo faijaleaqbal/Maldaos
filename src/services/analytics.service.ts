@@ -1,14 +1,15 @@
 import { AnalyticsSummary, CampusHealthScore, Issue } from '@/types';
+import { getSupabaseClient, isMockModeEnabled } from '@/lib/supabase';
 import { MOCK_CAMPUS_HEALTH } from './mockData';
 
 export const AnalyticsService = {
   calculateSummary(issues: Issue[]): AnalyticsSummary {
     const totalIssues = issues.length;
     const openIssues = issues.filter(
-      (i) => i.status !== 'RESOLVED' && i.status !== 'CLOSED'
+      (i) => i.status === 'OPEN' || i.status === 'ASSIGNED' || i.status === 'IN_PROGRESS'
     ).length;
     const criticalIssues = issues.filter(
-      (i) => i.priority === 'CRITICAL' && i.status !== 'RESOLVED' && i.status !== 'CLOSED'
+      (i) => i.priority === 'URGENT' && i.status !== 'RESOLVED' && i.status !== 'CLOSED'
     ).length;
     const inProgressIssues = issues.filter(
       (i) => i.status === 'IN_PROGRESS' || i.status === 'ASSIGNED'
@@ -17,33 +18,30 @@ export const AnalyticsService = {
       (i) => i.status === 'RESOLVED' || i.status === 'CLOSED'
     ).length;
 
-    const resolutionRate = totalIssues > 0 ? Math.round((resolvedIssues / totalIssues) * 100) : 100;
+    const resolutionRate = totalIssues > 0 ? Math.round((resolvedIssues / totalIssues) * 100) : 0;
 
-    // Average resolution time in hours
+    // Real average resolution time in hours computed strictly from database timestamps
     const resolvedWithDates = issues.filter((i) => i.resolvedAt && i.createdAt);
-    let avgHours = 4.2;
+    let avgHours = 0;
     if (resolvedWithDates.length > 0) {
       const totalDurations = resolvedWithDates.reduce((acc, curr) => {
         const diffMs = new Date(curr.resolvedAt!).getTime() - new Date(curr.createdAt).getTime();
-        return acc + diffMs / (1000 * 3600);
+        return acc + Math.max(0, diffMs / (1000 * 3600));
       }, 0);
       avgHours = Number((totalDurations / resolvedWithDates.length).toFixed(1));
     }
 
-    // Dynamic Campus Health calculation based on real counts
-    const campusHealth = this.calculateHealthScore(openIssues, criticalIssues, resolutionRate);
+    // Dynamic Campus Health calculation based strictly on real counts
+    const campusHealth = this.calculateHealthScore(totalIssues, openIssues, criticalIssues, resolutionRate);
 
-    // Issues by category
+    // Issues by category (grounded in real records)
     const categoryCounts: Record<string, number> = {};
     const categoryColors: Record<string, string> = {
-      ELECTRICAL: '#7A1F2B',
-      PLUMBING: '#1D4ED8',
-      IT_NETWORK: '#4338CA',
-      FACILITY_CLASSROOM: '#D4A72C',
-      LAB_EQUIPMENT: '#0D9488',
-      SANITATION: '#15803D',
-      SAFETY_SECURITY: '#B91C1C',
+      INFRASTRUCTURE: '#7A1F2B',
+      ACADEMICS: '#D4A72C',
       HOSTEL: '#C05621',
+      CLEANLINESS: '#15803D',
+      SAFETY: '#B91C1C',
       OTHER: '#6B6870',
     };
 
@@ -58,13 +56,18 @@ export const AnalyticsService = {
       color: categoryColors[cat] || '#7A1F2B',
     }));
 
-    // Issues by department
-    const deptMap: Record<string, { open: number; resolved: number }> = {};
+    // Issues by department (grounded in real records)
+    const deptMap: Record<string, { open: number; resolved: number; totalHours: number; resolvedCount: number }> = {};
     issues.forEach((iss) => {
-      const d = iss.department || 'Campus Infrastructure';
-      if (!deptMap[d]) deptMap[d] = { open: 0, resolved: 0 };
+      const d = iss.department || 'Unassigned';
+      if (!deptMap[d]) deptMap[d] = { open: 0, resolved: 0, totalHours: 0, resolvedCount: 0 };
       if (iss.status === 'RESOLVED' || iss.status === 'CLOSED') {
         deptMap[d].resolved++;
+        if (iss.resolvedAt && iss.createdAt) {
+          const diffHours = Math.max(0, (new Date(iss.resolvedAt).getTime() - new Date(iss.createdAt).getTime()) / (1000 * 3600));
+          deptMap[d].totalHours += diffHours;
+          deptMap[d].resolvedCount++;
+        }
       } else {
         deptMap[d].open++;
       }
@@ -74,16 +77,16 @@ export const AnalyticsService = {
       department: department.length > 22 ? department.slice(0, 20) + '…' : department,
       open: data.open,
       resolved: data.resolved,
-      avgHours: department.includes('Electrical') ? 2.4 : department.includes('IT') ? 3.1 : 4.8,
+      avgHours: data.resolvedCount > 0 ? Number((data.totalHours / data.resolvedCount).toFixed(1)) : 0,
     }));
 
-    // Issues by building
+    // Issues by building (grounded in real records)
     const buildingMap: Record<string, { count: number; critical: number }> = {};
     issues.forEach((iss) => {
-      const b = iss.location.building.split('(')[0].trim();
+      const b = (iss.location?.building || 'Main Campus').split('(')[0].trim();
       if (!buildingMap[b]) buildingMap[b] = { count: 0, critical: 0 };
       buildingMap[b].count++;
-      if (iss.priority === 'CRITICAL' && iss.status !== 'RESOLVED') {
+      if (iss.priority === 'URGENT' && iss.status !== 'RESOLVED' && iss.status !== 'CLOSED') {
         buildingMap[b].critical++;
       }
     });
@@ -94,19 +97,48 @@ export const AnalyticsService = {
       critical: data.critical,
     }));
 
-    // Daily distribution (past 7 days)
+    // Real daily distribution (past 7 days) computed from actual creation and resolution dates
     const days: { date: string; reported: number; resolved: number }[] = [];
     const now = new Date();
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const targetDate = new Date(now);
+      targetDate.setDate(targetDate.getDate() - i);
+      const targetDateStr = targetDate.toISOString().slice(0, 10);
+      const displayStr = targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      const reportedOnDay = issues.filter((iss) => iss.createdAt && iss.createdAt.startsWith(targetDateStr)).length;
+      const resolvedOnDay = issues.filter((iss) => iss.resolvedAt && iss.resolvedAt.startsWith(targetDateStr)).length;
+
       days.push({
-        date: dateStr,
-        reported: Math.floor(1 + (i % 3) + Math.random() * 2),
-        resolved: Math.floor(1 + ((i + 1) % 3)),
+        date: displayStr,
+        reported: reportedOnDay,
+        resolved: resolvedOnDay,
       });
     }
+
+    // Real resolution time distribution brackets
+    let under2 = 0;
+    let twoToSix = 0;
+    let sixToTwentyFour = 0;
+    let oneToThreeDays = 0;
+    let overThreeDays = 0;
+
+    resolvedWithDates.forEach((iss) => {
+      const diffHours = (new Date(iss.resolvedAt!).getTime() - new Date(iss.createdAt).getTime()) / (1000 * 3600);
+      if (diffHours < 2) under2++;
+      else if (diffHours < 6) twoToSix++;
+      else if (diffHours < 24) sixToTwentyFour++;
+      else if (diffHours < 72) oneToThreeDays++;
+      else overThreeDays++;
+    });
+
+    const resolutionTimeDistribution = [
+      { bracket: '< 2 hrs', count: under2 },
+      { bracket: '2 - 6 hrs', count: twoToSix },
+      { bracket: '6 - 24 hrs', count: sixToTwentyFour },
+      { bracket: '1 - 3 days', count: oneToThreeDays },
+      { bracket: '> 3 days', count: overThreeDays },
+    ];
 
     return {
       totalIssues,
@@ -121,40 +153,52 @@ export const AnalyticsService = {
       issuesByCategory,
       issuesByDepartment,
       issuesByBuilding,
-      resolutionTimeDistribution: [
-        { bracket: '< 2 hrs', count: 4 },
-        { bracket: '2 - 6 hrs', count: 7 },
-        { bracket: '6 - 24 hrs', count: 5 },
-        { bracket: '1 - 3 days', count: 2 },
-        { bracket: '> 3 days', count: 1 },
-      ],
+      resolutionTimeDistribution,
     };
   },
 
-  calculateHealthScore(openCount: number, criticalCount: number, resolutionRate: number): CampusHealthScore {
+  calculateHealthScore(
+    totalCount: number,
+    openCount: number,
+    criticalCount: number,
+    resolutionRate: number
+  ): CampusHealthScore {
+    if (totalCount === 0) {
+      return {
+        overall: 100,
+        resolutionPerformance: 100,
+        openIssueLoad: 100,
+        criticalSeverityIndex: 100,
+        recurringFaultIndex: 100,
+        statusLabel: 'OPTIMAL',
+        trailingDays: 14,
+        disclaimer: 'No incidents currently recorded on campus.',
+      };
+    }
+
     // Component 1: Resolution Velocity (0-100)
-    const resolutionPerformance = Math.min(100, Math.max(40, resolutionRate));
+    const resolutionPerformance = resolutionRate;
 
-    // Component 2: Open Issue Load (penalized if > 10 open issues)
-    const openIssueLoad = Math.max(30, Math.round(100 - openCount * 3.2));
+    // Component 2: Open Issue Load (penalized by open issues)
+    const openIssueLoad = Math.max(0, Math.round(100 - openCount * 5));
 
-    // Component 3: Critical Issue Index (heavily penalized by active critical faults)
-    const criticalSeverityIndex = Math.max(20, Math.round(100 - criticalCount * 18));
+    // Component 3: Critical Issue Index (penalized heavily by critical faults)
+    const criticalSeverityIndex = Math.max(0, Math.round(100 - criticalCount * 25));
 
-    // Component 4: Recurring Fault Stability Index
-    const recurringFaultIndex = 74;
+    // Component 4: Recurring Fault Index based on load
+    const recurringFaultIndex = Math.max(20, Math.round(100 - openCount * 3));
 
     const overall = Math.round(
-      resolutionPerformance * 0.35 +
+      resolutionPerformance * 0.4 +
       openIssueLoad * 0.25 +
       criticalSeverityIndex * 0.25 +
-      recurringFaultIndex * 0.15
+      recurringFaultIndex * 0.1
     );
 
     let statusLabel: 'OPTIMAL' | 'STABLE' | 'ATTENTION_NEEDED' | 'CRITICAL' = 'STABLE';
-    if (overall >= 88) statusLabel = 'OPTIMAL';
-    else if (overall >= 75) statusLabel = 'STABLE';
-    else if (overall >= 60) statusLabel = 'ATTENTION_NEEDED';
+    if (overall >= 85) statusLabel = 'OPTIMAL';
+    else if (overall >= 70) statusLabel = 'STABLE';
+    else if (overall >= 50) statusLabel = 'ATTENTION_NEEDED';
     else statusLabel = 'CRITICAL';
 
     return {
@@ -165,7 +209,8 @@ export const AnalyticsService = {
       recurringFaultIndex,
       statusLabel,
       trailingDays: 14,
-      disclaimer: MOCK_CAMPUS_HEALTH.disclaimer,
+      disclaimer: 'Computed strictly from live database incident records and resolution velocity.',
     };
   },
 };
+
