@@ -77,6 +77,7 @@ export interface AIProvider {
 export interface AIGatewayResult<T> {
   data: T;
   provider: ProviderName;
+  model: string;
   fallback: boolean;
   confidence: number;
   latencyMs: number;

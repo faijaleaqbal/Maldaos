@@ -6,3 +6,6 @@ dist/
 *.log
 coverage/
 .DS_Store
+# Stale artifacts from local runs (gateway uses .ts source).
+src/**/*.js
+test/**/*.js

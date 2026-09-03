@@ -46,7 +46,7 @@ export class AIGateway {
         const resp = await this.invokeWithRetry(provider, request);
         attempts.push({ provider: name, ok: true, latencyMs: resp.latencyMs });
         this.recordHealth(name, true);
-        return { data: resp.data as T, provider: name, fallback: name === "deterministic", confidence: resp.confidence ?? 0, latencyMs: resp.latencyMs, attempts };
+        return { data: resp.data as T, provider: name, model: resp.model, fallback: name === "deterministic", confidence: resp.confidence ?? 0, latencyMs: resp.latencyMs, attempts };
       } catch (e) {
         const err = e instanceof AIError ? e : new Error(String(e));
         const code = (err as AIError).code ?? "unknown";

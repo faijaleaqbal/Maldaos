@@ -142,7 +142,7 @@ export async function historicalRiskIndicators(gateway: AIGateway, args: { categ
   return { indicators: (r.data?.indicators ?? []).map(i => ({ label: i.label, score: Math.max(0, Math.min(1, Number(i.score) || 0)), reason: i.reason ?? "" })), provider: r.provider, fallback: false };
 }
 
-export async function analyzeIssue(gateway: AIGateway, issue: IssueInput): Promise<{ analysis: IssueAnalysis; provider: ProviderName; fallback: boolean }> {
+export async function analyzeIssue(gateway: AIGateway, issue: IssueInput): Promise<{ analysis: IssueAnalysis; provider: ProviderName; model: string; fallback: boolean; attempts: any[]; latencyMs: number }> {
   const fallbackAnalysis: IssueAnalysis = { category: "other", severity: "medium", priority: "P3", summary: FALLBACK_SUMMARY, confidence: 0, reasoning: FALLBACK_SUMMARY };
   const req: AIRequest = {
     feature: "classify.issue_category",
@@ -151,12 +151,14 @@ export async function analyzeIssue(gateway: AIGateway, issue: IssueInput): Promi
     options: { temperature: 0.2, maxTokens: 800 },
   };
   const r = await gateway.send<IssueAnalysis>(req, { feature: "classify.issue_category" });
-  if (r.fallback) return { analysis: fallbackAnalysis, provider: r.provider, fallback: true };
+  if (r.fallback) {
+    return { analysis: fallbackAnalysis, provider: r.provider, model: r.model, fallback: true, attempts: r.attempts, latencyMs: r.latencyMs };
+  }
   try {
     const validated = validate<IssueAnalysis>(issueAnalysisSchema, JSON.stringify(r.data));
-    return { analysis: validated, provider: r.provider, fallback: false };
+    return { analysis: validated, provider: r.provider, model: r.model, fallback: false, attempts: r.attempts, latencyMs: r.latencyMs };
   } catch (_e) {
-    return { analysis: fallbackAnalysis, provider: r.provider, fallback: true };
+    return { analysis: fallbackAnalysis, provider: r.provider, model: r.model, fallback: true, attempts: r.attempts, latencyMs: r.latencyMs };
   }
 }
 

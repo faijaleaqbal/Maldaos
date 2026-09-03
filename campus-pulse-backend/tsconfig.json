@@ -9,10 +9,15 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": false,
-    "outDir": "dist",
-    "rootDir": "src"
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "rootDirs": ["src", "../ai-gateway/src"],
+    "baseUrl": ".",
+    "paths": {
+      "@campuspulse/ai-gateway": ["../ai-gateway/src/index.ts"],
+      "@campuspulse/ai-gateway/*": ["../ai-gateway/src/*"]
+    }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "supabase", "tests"]
+  "include": ["src/**/*.ts", "../ai-gateway/src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "supabase", "tests", "scripts", "../ai-gateway/test", "../ai-gateway/node_modules"]
 }

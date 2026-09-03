@@ -1,6 +1,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { mapDbError } from '../lib/errors.js';
 import { validateIssueInput, Category, Priority } from '../lib/validation.js';
+import { enrichIssueWithAI, findDuplicatesForIssue } from './aiHooks.js';
+import type { AIAnalysisRow } from './ai.service.js';
 
 export interface IssueRow {
   id: string;
@@ -124,4 +126,64 @@ function validateTitleLen(t: string) {
 function validateDescLen(d: string) {
   const n = (d ?? '').trim().length;
   return n >= 10 && n <= 5000 ? { ok: true, errors: [] as string[] } : { ok: false, errors: ['description must be 10-5000 characters'] };
+}
+
+/**
+ * Create an issue and additionally request AI enrichment. The AI step is
+ * strictly non-blocking: if every provider fails (rate-limited, down,
+ * malformed response), the issue is still created and the response just
+ * carries `ai: null` plus a top-level `aiUnavailable: true` flag.
+ *
+ * AI recommendations are persisted in `ai_analysis` but are NEVER applied
+ * back to the issue row — a human (or the admin's explicit accept) decides.
+ */
+export async function createIssueWithAI(
+  client: SupabaseClient,
+  input: {
+    title: string;
+    description: string;
+    category: Category;
+    locationId: string;
+    priority?: Priority;
+    departmentId?: string | null;
+    isAnonymous?: boolean;
+    locationName?: string;
+  }
+): Promise<{ issue: IssueRow; ai: AIAnalysisRow | null; aiUnavailable: boolean }> {
+  const issue = await createIssue(client, input);
+
+  // Fire-and-forget AI enrichment. NEVER throws.
+  const ai = await enrichIssueWithAI(client, {
+    issueId: issue.id,
+    collegeId: issue.college_id,
+    title: issue.title,
+    description: issue.description,
+    category: issue.category,
+    locationName: input.locationName,
+  });
+
+  // "Unavailable" means either: (a) the AI call itself threw (ai is null) or
+  // (b) the AI was forced into deterministic fallback (status === 'fallback').
+  // The brief mandates that ticket creation continues either way.
+  const aiUnavailable = ai === null || ai.status === 'fallback';
+
+  return { issue, ai, aiUnavailable };
+}
+
+/**
+ * Optional duplicate-candidate check, called BEFORE createIssue when the
+ * client wants to show a "this looks like a duplicate" hint. Returns null
+ * on AI failure (caller should just proceed).
+ */
+export async function checkDuplicatesBeforeCreate(
+  client: SupabaseClient,
+  input: { title: string; description: string; category: Category; locationName?: string; collegeId: string }
+) {
+  return findDuplicatesForIssue(client, {
+    collegeId: input.collegeId,
+    title: input.title,
+    description: input.description,
+    category: input.category,
+    locationName: input.locationName,
+  });
 }
