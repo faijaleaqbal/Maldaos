@@ -1,0 +1,25 @@
+{
+  "name": "campus-pulse-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CampusPulse backend foundation: Supabase + PostgreSQL RLS + TypeScript services",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && vitest run",
+    "e2e": "vitest run tests/e2e.test.ts",
+    "rls": "vitest run tests/rls.test.ts",
+    "seed": "tsx scripts/seed.ts",
+    "reset": "supabase db reset"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.10.0"
+  }
+}
