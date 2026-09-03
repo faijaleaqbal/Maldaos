@@ -1,0 +1,20 @@
+{
+  "name": "@campuspulse/ai-gateway",
+  "version": "0.1.0",
+  "description": "Provider-agnostic AI gateway for CampusPulse.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts",
+    "lint": "tsc --noEmit"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": { "zod": "^3.23.8" },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.3"
+  }
+}
