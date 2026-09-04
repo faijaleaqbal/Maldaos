@@ -56,6 +56,21 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
     }
   }, [isOpen, issue]);
 
+  // Keyboard ESC listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !issue) return null;
 
   const departmentOptions = departments.map((d) => ({
@@ -119,7 +134,12 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm transition-opacity">
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm transition-opacity"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="assignment-drawer-title"
+    >
       <div className="w-full max-w-xl bg-white h-full shadow-2xl overflow-y-auto flex flex-col border-l border-warm-300">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-warm-200 bg-warm-50 flex items-center justify-between sticky top-0 z-10">
@@ -130,14 +150,15 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
               </span>
               <span className="text-xs text-ink-muted">Operational Work Order</span>
             </div>
-            <h3 className="font-serif font-semibold text-base sm:text-lg text-ink mt-1 line-clamp-1">
+            <h3 id="assignment-drawer-title" className="font-serif font-semibold text-base sm:text-lg text-ink mt-1 line-clamp-1">
               {issue.title}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-warm-200 hover:bg-warm-300 flex items-center justify-center text-ink cursor-pointer"
+            aria-label="Close assignment drawer"
+            className="w-9 h-9 rounded-full bg-warm-200 hover:bg-warm-300 flex items-center justify-center text-ink cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700"
           >
             <X className="w-4 h-4" />
           </button>

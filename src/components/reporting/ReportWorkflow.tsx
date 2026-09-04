@@ -166,8 +166,8 @@ export const ReportWorkflow: React.FC = () => {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Workflow Stepper Header (Only shown during steps 1-4) */}
       {step < 5 && (
-        <div className="bg-white rounded-lg border border-warm-300 p-4 shadow-subtle">
-          <div className="flex items-center justify-between relative">
+        <nav aria-label="Incident reporting steps" className="bg-white rounded-lg border border-warm-300 p-4 shadow-subtle">
+          <ol className="flex items-center justify-between relative list-none m-0 p-0">
             <div className="absolute top-4 left-4 right-4 h-0.5 bg-warm-200 -z-0" />
             <div
               className="absolute top-4 left-4 h-0.5 bg-maroon-700 -z-0 transition-all duration-300"
@@ -180,17 +180,21 @@ export const ReportWorkflow: React.FC = () => {
               const Icon = s.icon;
 
               return (
-                <div key={s.num} className="flex flex-col items-center relative z-10">
+                <li
+                  key={s.num}
+                  aria-current={isCurrent ? 'step' : undefined}
+                  className="flex flex-col items-center relative z-10"
+                >
                   <div
-                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-semibold transition-colors ${
+                    className={`w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-semibold transition-all ${
                       isDone
                         ? 'bg-maroon-700 border-maroon-700 text-white'
                         : isCurrent
-                        ? 'bg-white border-maroon-700 text-maroon-700 ring-4 ring-maroon-100'
+                        ? 'bg-white border-maroon-700 text-maroon-700 ring-4 ring-maroon-100 font-bold'
                         : 'bg-warm-100 border-warm-300 text-ink-muted'
                     }`}
                   >
-                    {isDone ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-3.5 h-3.5" />}
+                    {isDone ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                   </div>
                   <span
                     className={`text-[11px] font-medium mt-1.5 ${
@@ -199,11 +203,11 @@ export const ReportWorkflow: React.FC = () => {
                   >
                     Step {s.num}: {s.label}
                   </span>
-                </div>
+                </li>
               );
             })}
-          </div>
-        </div>
+          </ol>
+        </nav>
       )}
 
       {/* STEP 1: Description */}

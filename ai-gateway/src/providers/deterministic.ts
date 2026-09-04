@@ -1,4 +1,4 @@
-import type { AIProvider, AIRequest, AIResponse, HealthStatus, ProviderName } from "../contracts/index";
+import type { AIProvider, AIRequest, AIResponse, HealthStatus, ProviderName } from "../contracts/index.js";
 
 export const UNAVAILABLE_MESSAGE = "AI analysis unavailable.";
 

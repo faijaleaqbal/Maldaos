@@ -4,10 +4,11 @@ import { twMerge } from 'tailwind-merge';
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'warm' | 'subtle' | 'ai' | 'outlined';
+  hoverable?: boolean;
 }
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ children, variant = 'default', className, ...props }, ref) => {
+  ({ children, variant = 'default', hoverable = false, className, ...props }, ref) => {
     const variants = {
       default: 'bg-surface border-warm-300 text-ink shadow-card',
       warm: 'bg-warm-100 border-warm-300 text-ink',
@@ -20,7 +21,12 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={twMerge(
-          clsx('rounded-lg border p-4 sm:p-5 transition-all', variants[variant], className)
+          clsx(
+            'rounded-lg border p-4 sm:p-5 transition-all duration-150',
+            variants[variant],
+            hoverable && 'hover:border-maroon-300 hover:shadow-card hover:-translate-y-0.5 cursor-pointer',
+            className
+          )
         )}
         {...props}
       >

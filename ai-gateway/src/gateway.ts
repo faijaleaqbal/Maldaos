@@ -1,5 +1,5 @@
-import { AIError, type AIFeatureId, type AIGatewayResult, type AIProvider, type AIRequest, type AIResponse, type ProviderName } from "./contracts/index";
-import { isRetriable, sleep, type Logger } from "./utils/log";
+import { AIError, type AIFeatureId, type AIGatewayResult, type AIProvider, type AIRequest, type AIResponse, type ProviderName } from "./contracts/index.js";
+import { isRetriable, sleep, type Logger } from "./utils/log.js";
 
 export interface GatewayOptions {
   providers: Record<ProviderName, AIProvider>;

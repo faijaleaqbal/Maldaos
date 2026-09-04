@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadConfig } from "../src/config/index.ts";
+import { loadConfig } from "../dist/config/index.js";
 
 test("loadConfig reads env vars and supplies defaults", () => {
   const env = { AI_GATEWAY_TIMEOUT_MS: "5000", AI_GATEWAY_MAX_RETRIES: "4", AI_GATEWAY_PROVIDER_CHAIN: "openrouter,deterministic", GROQ_MODEL: "llama-3.1-8b-instant" };

@@ -27,13 +27,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-sans font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none rounded-md cursor-pointer select-none';
+      'inline-flex items-center justify-center font-sans font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700 focus-visible:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 rounded-md cursor-pointer select-none';
 
     const variants = {
       primary:
         'bg-maroon-700 text-white hover:bg-maroon-800 active:bg-maroon-900 border border-maroon-800 shadow-sm',
       secondary:
-        'bg-surface text-ink hover:bg-warm-100 active:bg-warm-200 border border-warm-300 text-ink-muted hover:text-ink',
+        'bg-surface text-ink hover:bg-warm-100 active:bg-warm-200 border border-warm-300 text-ink-muted hover:text-ink shadow-subtle',
       gold:
         'bg-gold-500 text-maroon-950 font-semibold hover:bg-gold-400 active:bg-gold-600 border border-gold-600 shadow-sm',
       outline:
@@ -45,8 +45,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const sizes = {
-      sm: 'text-xs h-8 px-3 gap-1.5 min-h-[36px]',
-      md: 'text-sm h-10 px-4 gap-2 min-h-[42px]',
+      sm: 'text-xs h-9 px-3 gap-1.5 min-h-[38px] sm:min-h-[36px]',
+      md: 'text-sm h-11 px-4 gap-2 min-h-[44px]',
       lg: 'text-base h-12 px-6 gap-2.5 min-h-[48px]',
     };
 
@@ -54,6 +54,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || isLoading}
+        aria-busy={isLoading}
         className={twMerge(clsx(baseStyles, variants[variant], sizes[size], className))}
         {...props}
       >

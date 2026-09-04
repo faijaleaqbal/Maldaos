@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { AIGateway } from "../src/gateway.ts";
-import { AIError, type AIProvider, type AIRequest, type AIResponse } from "../src/contracts/index.ts";
-import { DeterministicFallbackProvider } from "../src/providers/deterministic.ts";
+import { AIGateway } from "../dist/gateway.js";
+import { AIError, type AIProvider, type AIRequest, type AIResponse } from "../dist/contracts/index.js";
+import { DeterministicFallbackProvider } from "../dist/providers/deterministic.js";
 
 class StubProvider implements AIProvider {
   readonly name: any;

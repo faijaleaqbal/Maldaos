@@ -83,19 +83,21 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, compact = false }) 
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            {/* Upvote Button */}
+            {/* Upvote Button - Min 44px hit box for mobile ergonomics */}
             <button
               type="button"
               onClick={handleUpvote}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors cursor-pointer ${
+              aria-label={`Upvote issue ${issue.ticketNumber}. Current upvotes: ${issue.upvotes || 0}`}
+              aria-pressed={isUpvoted}
+              className={`min-h-[44px] min-w-[44px] px-2.5 py-1.5 inline-flex items-center justify-center gap-1.5 rounded-md text-xs transition-colors cursor-pointer ${
                 isUpvoted
                   ? 'bg-maroon-50 text-maroon-800 font-semibold border border-maroon-200'
                   : 'hover:bg-warm-100 text-ink-muted'
               }`}
               title="Endorse this campus issue report"
             >
-              <ThumbsUp className={`w-3 h-3 ${isUpvoted ? 'fill-maroon-700 text-maroon-700' : ''}`} />
-              <span>{issue.upvotes || 0}</span>
+              <ThumbsUp className={`w-3.5 h-3.5 ${isUpvoted ? 'fill-maroon-700 text-maroon-700' : ''}`} />
+              <span className="font-mono text-xs">{issue.upvotes || 0}</span>
             </button>
 
             {/* Comments count */}

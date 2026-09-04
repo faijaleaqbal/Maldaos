@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AIError } from "../contracts/index";
+import { AIError } from "../contracts/index.js";
 
 export type ZodSchema = z.ZodTypeAny;
 

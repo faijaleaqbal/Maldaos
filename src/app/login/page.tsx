@@ -7,15 +7,18 @@ import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { SEED_ACCOUNTS } from '@/services/auth.service';
+import { getSeedAccount, isDevSeedLoginAvailable } from '@/services/devSeedAccounts';
 import { GraduationCap, Wrench, Building2, Shield, ArrowRight, AlertCircle, Lock } from 'lucide-react';
+
+// Dev-only convenience: quick-persona logins never render in production.
+const SHOW_DEV_PERSONAS = isDevSeedLoginAvailable();
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, switchRole } = useAuth();
 
-  const [email, setEmail] = useState('student1@campus.test');
-  const [password, setPassword] = useState('TestPass123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -40,7 +43,8 @@ export default function LoginPage() {
   };
 
   const handleQuickPersona = async (targetRole: UserRole) => {
-    const creds = SEED_ACCOUNTS[targetRole];
+    if (!SHOW_DEV_PERSONAS) return; // unreachable in production (not rendered)
+    const creds = getSeedAccount(targetRole); // throws in production as a second guard
     setEmail(creds.email);
     setPassword(creds.pass);
     setIsLoading(true);
@@ -88,7 +92,7 @@ export default function LoginPage() {
             <Input
               label="Institutional Email Address *"
               type="email"
-              placeholder="e.g. student1@campus.test"
+              placeholder="your.name@maldacollege.edu"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -114,10 +118,11 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* 1-Click Evaluation Persona Switchers */}
+          {/* 1-Click Evaluation Persona Switchers (DEV/TEST ONLY — never rendered in production) */}
+          {SHOW_DEV_PERSONAS && (
           <div className="pt-4 border-t border-warm-200">
             <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider block mb-2 text-center">
-              Quick 1-Click Seed Account Login
+              Quick 1-Click Seed Account Login (Dev Only)
             </span>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -129,7 +134,7 @@ export default function LoginPage() {
                   <GraduationCap className="w-3.5 h-3.5 text-maroon-700" />
                   <span>Student</span>
                 </div>
-                <span className="text-[10px] text-ink-muted block truncate">student1@campus.test</span>
+                <span className="text-[10px] text-ink-muted block truncate">{getSeedAccount('STUDENT').email}</span>
               </button>
 
               <button
@@ -141,7 +146,7 @@ export default function LoginPage() {
                   <Wrench className="w-3.5 h-3.5 text-maroon-700" />
                   <span>Maintenance Staff</span>
                 </div>
-                <span className="text-[10px] text-ink-muted block truncate">staff.cse@campus.test</span>
+                <span className="text-[10px] text-ink-muted block truncate">{getSeedAccount('STAFF').email}</span>
               </button>
 
               <button
@@ -153,7 +158,7 @@ export default function LoginPage() {
                   <Building2 className="w-3.5 h-3.5 text-maroon-700" />
                   <span>Dept Admin</span>
                 </div>
-                <span className="text-[10px] text-ink-muted block truncate">admin.cse@campus.test</span>
+                <span className="text-[10px] text-ink-muted block truncate">{getSeedAccount('DEPARTMENT_ADMIN').email}</span>
               </button>
 
               <button
@@ -165,10 +170,11 @@ export default function LoginPage() {
                   <Shield className="w-3.5 h-3.5 text-maroon-700" />
                   <span>Super Admin</span>
                 </div>
-                <span className="text-[10px] text-ink-muted block truncate">super@campus.test</span>
+                <span className="text-[10px] text-ink-muted block truncate">{getSeedAccount('SUPER_ADMIN').email}</span>
               </button>
             </div>
           </div>
+          )}
         </div>
 
         <div className="text-center text-xs text-ink-muted">

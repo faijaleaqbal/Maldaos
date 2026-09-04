@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DeterministicFallbackProvider } from "../src/providers/deterministic.ts";
+import { DeterministicFallbackProvider } from "../dist/providers/deterministic.js";
 
 test("deterministic provider is always configured and healthy", async () => {
   const p = new DeterministicFallbackProvider();

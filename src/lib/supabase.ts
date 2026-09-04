@@ -14,8 +14,12 @@ export const isSupabaseConfigured = (): boolean => {
 };
 
 export const isMockModeEnabled = (): boolean => {
-  // In production, mock mode is strictly controlled by explicit env var, NEVER by localStorage
-  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+  // FAIL-CLOSED: production builds can NEVER run in mock mode, regardless of
+  // env flags or client-side localStorage overrides.
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
+  if (typeof window !== 'undefined') {
     const forced = localStorage.getItem('campuspulse_force_mock');
     if (forced !== null) {
       return forced === 'true';

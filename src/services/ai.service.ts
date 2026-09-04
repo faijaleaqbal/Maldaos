@@ -35,14 +35,13 @@ export const AIService = {
     title: string,
     description: string,
     building: string,
-    existingIssues: Issue[]
+    existingIssues: Issue[] = []
   ): AIAnalysis {
     const text = `${title} ${description} ${building}`.toLowerCase();
 
     let detectedCategory: IssueCategory = 'OTHER';
     let suggestedPriority: IssuePriority = 'MEDIUM';
     let suggestedDepartment = 'Campus Infrastructure Helpdesk';
-    let confidence = 0.88;
     const urgencyFactors: string[] = [];
 
     // Keyword intelligence
@@ -50,38 +49,32 @@ export const AIService = {
       detectedCategory = 'SAFETY';
       suggestedPriority = 'URGENT';
       suggestedDepartment = 'Campus Security & Electrical Maintenance';
-      confidence = 0.98;
       urgencyFactors.push('Immediate life safety or electrical fire risk detected');
       urgencyFactors.push('Urgent physical isolation recommended');
     } else if (text.includes('wire') || text.includes('switch') || text.includes('light') || text.includes('bulb') || text.includes('power') || text.includes('breaker') || text.includes('fan') || text.includes('leak') || text.includes('water') || text.includes('pipe') || text.includes('wall') || text.includes('roof')) {
       detectedCategory = 'INFRASTRUCTURE';
       suggestedPriority = text.includes('blackout') || text.includes('hall') || text.includes('flood') ? 'HIGH' : 'MEDIUM';
       suggestedDepartment = 'Campus Infrastructure Maintenance';
-      confidence = 0.92;
       urgencyFactors.push('Physical facility or electrical fixture degradation reported');
     } else if (text.includes('wifi') || text.includes('wi-fi') || text.includes('network') || text.includes('projector') || text.includes('bench') || text.includes('blackboard') || text.includes('desk') || text.includes('classroom') || text.includes('lecture') || text.includes('lab') || text.includes('computer')) {
       detectedCategory = 'ACADEMICS';
       suggestedPriority = text.includes('exam') || text.includes('lecture') ? 'HIGH' : 'MEDIUM';
       suggestedDepartment = 'Academic Infrastructure & IT Cell';
-      confidence = 0.93;
       urgencyFactors.push('Impacts ongoing classroom instruction or lab sessions');
     } else if (text.includes('garbage') || text.includes('waste') || text.includes('trash') || text.includes('smell') || text.includes('stink') || text.includes('clean') || text.includes('dirt') || text.includes('toilet') || text.includes('washroom') || text.includes('canteen')) {
       detectedCategory = 'CLEANLINESS';
       suggestedPriority = text.includes('canteen') ? 'HIGH' : 'MEDIUM';
       suggestedDepartment = 'Sanitation & Housekeeping';
-      confidence = 0.91;
       urgencyFactors.push('Hygiene standards in shared student facilities or dining areas');
     } else if (text.includes('stair') || text.includes('lock') || text.includes('guard') || text.includes('gate') || text.includes('theft') || text.includes('rail') || text.includes('harassment') || text.includes('threat')) {
       detectedCategory = 'SAFETY';
       suggestedPriority = 'HIGH';
       suggestedDepartment = 'Campus Security & Estate Office';
-      confidence = 0.94;
       urgencyFactors.push('Physical safety or perimeter security concern');
     } else if (text.includes('hostel') || text.includes('mess') || text.includes('room') || text.includes('bed') || text.includes('warden')) {
       detectedCategory = 'HOSTEL';
       suggestedPriority = 'MEDIUM';
       suggestedDepartment = 'Hostel Superintendent Office';
-      confidence = 0.89;
       urgencyFactors.push('Residential student accommodation welfare');
     }
 
@@ -115,14 +108,16 @@ export const AIService = {
       detectedCategory,
       suggestedSeverity: suggestedPriority,
       suggestedPriority,
-      confidence: Number(confidence.toFixed(2)),
+      // Heuristic output carries NO confidence claim — only real provider
+      // responses may report confidence. This is always a labelled fallback.
+      confidence: 0,
       summary,
       suggestedDepartment,
       possibleDuplicates,
       urgencyFactors,
-      gatewayProvider: 'CampusPulse Triage Engine (Institutional Rules + Malda Context)',
+      gatewayProvider: 'deterministic-heuristic (rule-based, not AI)',
       analyzedAt: new Date().toISOString(),
-      isFallback: false,
+      isFallback: true,
     };
   },
 

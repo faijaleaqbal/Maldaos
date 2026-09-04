@@ -2,19 +2,9 @@ import { getSupabaseClient, isMockModeEnabled, toBackendError } from '@/lib/supa
 import { mapProfileToUser, ProfileRow } from '@/lib/backendTypes';
 import { User, UserRole } from '@/types';
 import { MOCK_USERS } from './mockData';
+import { getSeedAccount } from './devSeedAccounts';
 
 const USER_STORAGE_KEY = 'campuspulse_active_user';
-
-// Test credentials matching the database seed (LOCAL STACK ONLY — these are
-// the seeded demo accounts in campus-pulse-backend/scripts/seed.ts, used by
-// the 1-click persona buttons on the login page. Real logins always use the
-// password typed into the form).
-export const SEED_ACCOUNTS: Record<UserRole, { email: string; pass: string; label: string }> = {
-  STUDENT: { email: 'student1@campus.test', pass: 'TestPass123!', label: 'Aarav Student (CSE)' },
-  STAFF: { email: 'staff.cse@campus.test', pass: 'TestPass123!', label: 'Ravi Staff (CSE Maintenance)' },
-  DEPARTMENT_ADMIN: { email: 'admin.cse@campus.test', pass: 'TestPass123!', label: 'Dr. Sen (Dept Admin CSE)' },
-  SUPER_ADMIN: { email: 'super@campus.test', pass: 'TestPass123!', label: 'Principal Super (Executive Admin)' },
-};
 
 /**
  * Load the authoritative profile row for a user id. Role/department/full_name
@@ -100,25 +90,27 @@ export const AuthService = {
   /**
    * Switch role/persona.
    *  - MOCK MODE: swaps the local demo persona (no auth involved).
-   *  - LIVE MODE: performs a REAL Supabase login as the seeded demo account
-   *    for that role. There is no role bypass: the resulting role is whatever
+   *  - LIVE MODE (non-production dev only): performs a REAL Supabase login as
+   *    the seeded demo account for that role. The resulting role is whatever
    *    profiles.role says in the DB.
+   *  - PRODUCTION: hard-blocked. Seeded demo logins (including SUPER_ADMIN)
+   *    are never usable in production; only real credentials authenticate.
    */
   async switchRole(role: UserRole): Promise<User> {
     if (!isMockModeEnabled()) {
-      const creds = SEED_ACCOUNTS[role];
-      if (creds) {
-        const res = await this.login(creds.email, creds.pass);
-        if (res.user) {
-          return res.user;
-        }
+      if (process.env.NODE_ENV === 'production') {
         throw toBackendError(
-          { message: res.error || 'Could not switch to the seeded account for this role.' },
+          { message: 'ACCOUNT_SWITCH_FAILED: role switching via seeded accounts is disabled in production. Sign in with your real credentials.' },
           'ACCOUNT_SWITCH_FAILED'
         );
       }
+      const creds = getSeedAccount(role);
+      const res = await this.login(creds.email, creds.pass);
+      if (res.user) {
+        return res.user;
+      }
       throw toBackendError(
-        { message: 'No seeded account exists for this role on the local stack.' },
+        { message: res.error || 'Could not switch to the seeded account for this role.' },
         'ACCOUNT_SWITCH_FAILED'
       );
     }

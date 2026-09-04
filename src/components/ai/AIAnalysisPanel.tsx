@@ -30,8 +30,8 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
     );
   }
 
-  // Clean fallback state if AI is unavailable or failed
-  if (!analysis || analysis.isFallback) {
+  // Clean fallback state if AI is completely absent
+  if (!analysis) {
     return (
       <div className="rounded-lg border border-warm-300 bg-warm-100 p-4">
         <div className="flex items-start gap-3">
@@ -39,8 +39,7 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
           <div className="space-y-1">
             <h4 className="text-xs font-semibold text-ink uppercase tracking-wider">Automated Triage Status</h4>
             <p className="text-xs text-ink-muted leading-relaxed">
-              {analysis?.summary ||
-                'AI analysis temporarily unavailable. You can continue processing this report manually.'}
+              Automated analysis temporarily unavailable. You can continue processing this report manually.
             </p>
             <div className="pt-1">
               <span className="text-[11px] text-ink-muted italic">Core reporting workflows remain fully operational.</span>
@@ -51,7 +50,8 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
     );
   }
 
-  const confidencePct = Math.round((analysis.confidence || 0.85) * 100);
+  const confidencePct = Math.round((analysis.confidence || 0) * 100);
+  const isFallback = analysis.isFallback;
 
   return (
     <div className="rounded-lg border border-ai-border bg-ai-surface p-4 sm:p-5 relative overflow-hidden transition-all">
@@ -66,20 +66,26 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
           </div>
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-ai-text flex items-center gap-1.5">
-              AI Operational Assistant
-              <span className="text-[10px] font-normal lowercase tracking-normal px-1.5 py-0.5 rounded bg-ai-100 text-ai-700">
-                recommendation only
+              {isFallback ? 'Rule-Based Operational Triage' : 'AI Operational Assistant'}
+              <span className={`text-[10px] font-normal lowercase tracking-normal px-1.5 py-0.5 rounded ${
+                isFallback ? 'bg-warm-200 text-ink-muted' : 'bg-ai-100 text-ai-700'
+              }`}>
+                {isFallback ? 'deterministic fallback' : 'recommendation only'}
               </span>
             </h4>
           </div>
         </div>
 
-        {analysis.confidence > 0 && (
-          <div className="flex items-center gap-1.5 text-xs text-ai-text">
-            <span className="text-ink-muted text-[11px]">Confidence:</span>
+        <div className="flex items-center gap-1.5 text-xs text-ai-text">
+          <span className="text-ink-muted text-[11px]">System Confidence:</span>
+          {isFallback ? (
+            <span className="font-mono text-xs text-ink-muted bg-warm-200 px-1.5 py-0.5 rounded" title="Deterministic rule-based heuristics do not claim LLM confidence">
+              0% (Heuristic)
+            </span>
+          ) : (
             <span className="font-semibold text-ai-800">{confidencePct}%</span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Structured Recommendations Grid */}

@@ -80,168 +80,174 @@ export const IssueTable: React.FC<IssueTableProps> = ({
   };
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-warm-300 bg-white">
-      <table className="w-full text-left border-collapse text-xs sm:text-sm">
-        <thead>
-          <tr className="border-b border-warm-300 bg-warm-100/90 text-ink-muted text-[11px] font-semibold uppercase tracking-wider">
-            <th
-              className="py-3 px-3.5 cursor-pointer hover:text-maroon-800 select-none"
-              onClick={() => toggleSort('ticket')}
-            >
-              <div className="flex items-center gap-1">
-                <span>Ticket</span>
-                <ArrowUpDown className="w-3 h-3" />
-              </div>
-            </th>
-            <th className="py-3 px-3.5">Issue Description</th>
-            <th className="py-3 px-3.5 hidden md:table-cell">Location</th>
-            <th
-              className="py-3 px-3.5 cursor-pointer hover:text-maroon-800 select-none"
-              onClick={() => toggleSort('priority')}
-            >
-              <div className="flex items-center gap-1">
-                <span>Priority</span>
-                <ArrowUpDown className="w-3 h-3" />
-              </div>
-            </th>
-            <th className="py-3 px-3.5 hidden lg:table-cell">Department</th>
-            <th className="py-3 px-3.5">Status</th>
-            <th
-              className="py-3 px-3.5 cursor-pointer hover:text-maroon-800 select-none hidden sm:table-cell"
-              onClick={() => toggleSort('age')}
-            >
-              <div className="flex items-center gap-1">
-                <span>Age</span>
-                <ArrowUpDown className="w-3 h-3" />
-              </div>
-            </th>
-            <th className="py-3 px-3.5 hidden xl:table-cell">Assigned Staff</th>
-            <th className="py-3 px-3.5 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-warm-200">
-          {sortedIssues.map((issue) => {
-            const isCritical = (issue.priority === 'URGENT' || (issue.priority as string) === 'CRITICAL') && issue.status !== 'RESOLVED' && issue.status !== 'CLOSED';
-
-            return (
-              <tr
-                key={issue.id}
-                className={`hover:bg-warm-50/80 transition-colors ${
-                  isCritical ? 'bg-rose-50/40' : ''
-                }`}
+    <div className="relative rounded-lg border border-warm-300 bg-white shadow-card overflow-hidden">
+      {/* Mobile swipe hint */}
+      <div className="block sm:hidden px-3 py-1.5 bg-warm-50 border-b border-warm-200 text-[11px] text-ink-muted flex items-center justify-between">
+        <span>Scroll horizontally to inspect full work order details →</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse text-xs sm:text-sm">
+          <thead>
+            <tr className="border-b border-warm-300 bg-warm-100/90 text-ink-muted text-[11px] font-semibold uppercase tracking-wider">
+              <th
+                className="py-3 px-3.5 cursor-pointer hover:text-maroon-800 select-none"
+                onClick={() => toggleSort('ticket')}
               >
-                {/* Ticket ID */}
-                <td className="py-3 px-3.5 font-mono text-xs font-semibold text-ink whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
-                    {isCritical && (
-                      <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping shrink-0" />
-                    )}
-                    <Link
-                      href={`/issues/${issue.id}`}
-                      className="text-maroon-800 hover:text-maroon-950 hover:underline"
-                    >
-                      {issue.ticketNumber}
-                    </Link>
-                  </div>
-                </td>
+                <div className="flex items-center gap-1">
+                  <span>Ticket</span>
+                  <ArrowUpDown className="w-3 h-3" />
+                </div>
+              </th>
+              <th className="py-3 px-3.5">Issue Description</th>
+              <th className="py-3 px-3.5 hidden md:table-cell">Location</th>
+              <th
+                className="py-3 px-3.5 cursor-pointer hover:text-maroon-800 select-none"
+                onClick={() => toggleSort('priority')}
+              >
+                <div className="flex items-center gap-1">
+                  <span>Priority</span>
+                  <ArrowUpDown className="w-3 h-3" />
+                </div>
+              </th>
+              <th className="py-3 px-3.5 hidden lg:table-cell">Department</th>
+              <th className="py-3 px-3.5">Status</th>
+              <th
+                className="py-3 px-3.5 cursor-pointer hover:text-maroon-800 select-none hidden sm:table-cell"
+                onClick={() => toggleSort('age')}
+              >
+                <div className="flex items-center gap-1">
+                  <span>Age</span>
+                  <ArrowUpDown className="w-3 h-3" />
+                </div>
+              </th>
+              <th className="py-3 px-3.5 hidden xl:table-cell">Assigned Staff</th>
+              <th className="py-3 px-3.5 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-warm-200">
+            {sortedIssues.map((issue) => {
+              const isCritical = (issue.priority === 'URGENT' || (issue.priority as string) === 'CRITICAL') && issue.status !== 'RESOLVED' && issue.status !== 'CLOSED';
 
-                {/* Issue title */}
-                <td className="py-3 px-3.5 max-w-[260px] sm:max-w-[320px]">
-                  <div className="space-y-0.5">
-                    <span
-                      onClick={() => onOpenQuickView && onOpenQuickView(issue)}
-                      className="font-medium text-ink hover:text-maroon-800 cursor-pointer line-clamp-1 leading-snug"
-                    >
-                      {issue.title}
-                    </span>
-                    <div className="flex items-center gap-2 text-[11px] text-ink-muted">
-                      <span>{issue.category.replace('_', ' ')}</span>
-                      {issue.aiAnalysis && !issue.aiAnalysis.isFallback && (
-                        <span className="inline-flex items-center gap-0.5 text-ai-700 bg-ai-50 px-1 rounded text-[10px]">
-                          <Sparkles className="w-2.5 h-2.5" />
-                          AI
-                        </span>
+              return (
+                <tr
+                  key={issue.id}
+                  className={`hover:bg-warm-50/80 transition-colors ${
+                    isCritical ? 'bg-rose-50/40' : ''
+                  }`}
+                >
+                  {/* Ticket ID */}
+                  <td className="py-3 px-3.5 font-mono text-xs font-semibold text-ink whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      {isCritical && (
+                        <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping shrink-0" />
                       )}
-                    </div>
-                  </div>
-                </td>
-
-                {/* Location */}
-                <td className="py-3 px-3.5 hidden md:table-cell max-w-[180px]">
-                  <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-                    <MapPin className="w-3 h-3 text-maroon-700 shrink-0" />
-                    <span className="truncate" title={`${issue.location.building} - ${issue.location.roomOrLandmark}`}>
-                      {issue.location.building.split('(')[0]}
-                    </span>
-                  </div>
-                </td>
-
-                {/* Priority */}
-                <td className="py-3 px-3.5 whitespace-nowrap">
-                  <PriorityBadge priority={issue.priority} />
-                </td>
-
-                {/* Department */}
-                <td className="py-3 px-3.5 hidden lg:table-cell text-xs text-ink-muted whitespace-nowrap">
-                  {issue.department}
-                </td>
-
-                {/* Status */}
-                <td className="py-3 px-3.5 whitespace-nowrap">
-                  <IssueStatusBadge status={issue.status} />
-                </td>
-
-                {/* Age */}
-                <td className="py-3 px-3.5 hidden sm:table-cell text-xs text-ink-muted font-mono whitespace-nowrap">
-                  {calculateAge(issue.createdAt)}
-                </td>
-
-                {/* Assigned Staff */}
-                <td className="py-3 px-3.5 hidden xl:table-cell text-xs whitespace-nowrap">
-                  {issue.assignedTo ? (
-                    <div className="flex items-center gap-1.5 text-ink">
-                      <span className="w-5 h-5 rounded-full bg-warm-200 flex items-center justify-center text-[10px] font-semibold text-maroon-800">
-                        {issue.assignedTo.name.charAt(0)}
-                      </span>
-                      <span className="truncate max-w-[120px]">{issue.assignedTo.name}</span>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => onAssignClick && onAssignClick(issue)}
-                      className="text-amber-800 hover:text-amber-950 font-medium text-xs flex items-center gap-1"
-                    >
-                      <UserCheck className="w-3 h-3" />
-                      <span>Unassigned</span>
-                    </button>
-                  )}
-                </td>
-
-                {/* Actions */}
-                <td className="py-3 px-3.5 text-right whitespace-nowrap">
-                  <div className="flex items-center justify-end gap-1.5">
-                    {onOpenQuickView && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => onOpenQuickView(issue)}
-                        className="h-7 text-xs px-2.5"
+                      <Link
+                        href={`/issues/${issue.id}`}
+                        className="text-maroon-800 hover:text-maroon-950 hover:underline"
                       >
-                        Inspect
-                      </Button>
+                        {issue.ticketNumber}
+                      </Link>
+                    </div>
+                  </td>
+
+                  {/* Issue title */}
+                  <td className="py-3 px-3.5 max-w-[260px] sm:max-w-[320px]">
+                    <div className="space-y-0.5">
+                      <span
+                        onClick={() => onOpenQuickView && onOpenQuickView(issue)}
+                        className="font-medium text-ink hover:text-maroon-800 cursor-pointer line-clamp-1 leading-snug"
+                      >
+                        {issue.title}
+                      </span>
+                      <div className="flex items-center gap-2 text-[11px] text-ink-muted">
+                        <span>{issue.category.replace('_', ' ')}</span>
+                        {issue.aiAnalysis && !issue.aiAnalysis.isFallback && (
+                          <span className="inline-flex items-center gap-0.5 text-ai-700 bg-ai-50 px-1 rounded text-[10px]">
+                            <Sparkles className="w-2.5 h-2.5" />
+                            AI
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Location */}
+                  <td className="py-3 px-3.5 hidden md:table-cell max-w-[180px]">
+                    <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+                      <MapPin className="w-3 h-3 text-maroon-700 shrink-0" />
+                      <span className="truncate" title={`${issue.location.building} - ${issue.location.roomOrLandmark}`}>
+                        {issue.location.building.split('(')[0]}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Priority */}
+                  <td className="py-3 px-3.5 whitespace-nowrap">
+                    <PriorityBadge priority={issue.priority} />
+                  </td>
+
+                  {/* Department */}
+                  <td className="py-3 px-3.5 hidden lg:table-cell text-xs text-ink-muted whitespace-nowrap">
+                    {issue.department}
+                  </td>
+
+                  {/* Status */}
+                  <td className="py-3 px-3.5 whitespace-nowrap">
+                    <IssueStatusBadge status={issue.status} />
+                  </td>
+
+                  {/* Age */}
+                  <td className="py-3 px-3.5 hidden sm:table-cell text-xs text-ink-muted font-mono whitespace-nowrap">
+                    {calculateAge(issue.createdAt)}
+                  </td>
+
+                  {/* Assigned Staff */}
+                  <td className="py-3 px-3.5 hidden xl:table-cell text-xs whitespace-nowrap">
+                    {issue.assignedTo ? (
+                      <div className="flex items-center gap-1.5 text-ink">
+                        <span className="w-5 h-5 rounded-full bg-warm-200 flex items-center justify-center text-[10px] font-semibold text-maroon-800">
+                          {issue.assignedTo.name.charAt(0)}
+                        </span>
+                        <span className="truncate max-w-[120px]">{issue.assignedTo.name}</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onAssignClick && onAssignClick(issue)}
+                        className="text-amber-800 hover:text-amber-950 font-medium text-xs flex items-center gap-1 p-1 hover:bg-amber-50 rounded"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>Unassigned</span>
+                      </button>
                     )}
-                    <Link href={`/issues/${issue.id}`}>
-                      <Button size="sm" variant="outline" className="h-7 text-xs px-2" title="Full ticket view">
-                        <ExternalLink className="w-3 h-3" />
-                      </Button>
-                    </Link>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  </td>
+
+                  {/* Actions */}
+                  <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {onOpenQuickView && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => onOpenQuickView(issue)}
+                          className="h-8 text-xs px-2.5"
+                        >
+                          Inspect
+                        </Button>
+                      )}
+                      <Link href={`/issues/${issue.id}`}>
+                        <Button size="sm" variant="outline" className="h-8 text-xs px-2" title="Full ticket view" aria-label={`View full ticket for ${issue.ticketNumber}`}>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

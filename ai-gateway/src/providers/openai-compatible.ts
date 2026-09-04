@@ -1,6 +1,6 @@
-import type { AIProvider, AIRequest, AIResponse, HealthStatus, ProviderName } from "../contracts/index";
-import { AIError } from "../contracts/index";
-import { withTimeout, type Logger } from "../utils/log";
+import type { AIProvider, AIRequest, AIResponse, HealthStatus, ProviderName } from "../contracts/index.js";
+import { AIError } from "../contracts/index.js";
+import { withTimeout, type Logger } from "../utils/log.js";
 
 export interface OpenAICompatibleConfig {
   name: ProviderName;

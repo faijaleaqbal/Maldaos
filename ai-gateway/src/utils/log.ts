@@ -1,4 +1,4 @@
-import { AIError } from "../contracts/index";
+import { AIError } from "../contracts/index.js";
 
 export interface Logger {
   debug(msg: string, meta?: Record<string, unknown>): void;

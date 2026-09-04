@@ -5,7 +5,7 @@ evidence, staff/departments resolve them, everything enforced at the database
 level with PostgreSQL Row Level Security.
 
 **Stack:** Supabase (Auth + Postgres + Storage) · PostgreSQL RLS · SECURITY
-DEFINER RPCs · TypeScript services · Edge Functions (Deno) · Vitest.
+DEFINER RPCs · TypeScript services · Vitest.
 
 ---
 
@@ -106,9 +106,6 @@ npm run seed             # auth users + demo data (idempotent)
 # 4. run all tests (RLS suite + E2E journey)
 npm test
 
-# 5. (optional) deploy edge functions
-supabase functions deploy assign-issue
-supabase functions deploy transition-status
 ```
 
 ### Test users (LOCAL TEST ONLY — password `TestPass123!`)
@@ -182,8 +179,9 @@ Run: `npm test` (typecheck + both suites).
   trigger currently defaults everyone to the first college.
 - AI layer: intentionally absent. When added, it must call these same backend
   services/RPCs (Frontend → Backend → AI gateway), never the provider directly.
-- Edge functions tested indirectly via the RPCs they wrap (JWT path verified
-  by construction; no separate HTTP-level tests included).
+- Edge functions were REMOVED (dead infrastructure): the Next.js server route
+  calls the guarded RPCs directly over PostgREST with the user's JWT. No
+  separate Deno functions are deployed or needed.
 
 ## File map
 
@@ -199,6 +197,5 @@ campus-pulse-backend/
 │                                    # comment, vote, image, notification, analytics
 ├── supabase/
 │   ├── migrations/0001..0006_*.sql  # schema → RLS → storage → triggers
-│   └── functions/assign-issue, transition-status  # Deno edge fns
 └── tests/  helpers.ts, rls.test.ts, e2e.test.ts
 ```

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, UserRole } from '@/types';
-import { AuthService, SEED_ACCOUNTS } from '@/services/auth.service';
+import { AuthService } from '@/services/auth.service';
 import { MOCK_USERS } from '@/services/mockData';
 import { getSupabaseClient, isMockModeEnabled } from '@/lib/supabase';
 

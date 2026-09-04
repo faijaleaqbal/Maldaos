@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extractJson, validate, issueAnalysisSchema } from "../src/validation/index.ts";
-import { AIError } from "../src/contracts/index.ts";
+import { extractJson, validate, issueAnalysisSchema } from "../dist/validation/index.js";
+import { AIError } from "../dist/contracts/index.js";
 
 test("extractJson handles plain JSON", () => { assert.deepEqual(extractJson('{"a":1}'), { a: 1 }); });
 test("extractJson handles fenced JSON", () => { assert.deepEqual(extractJson('```json\n{"a":2}\n```'), { a: 2 }); });

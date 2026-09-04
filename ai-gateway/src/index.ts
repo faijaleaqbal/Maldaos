@@ -1,17 +1,17 @@
-import { AIGateway, type GatewayOptions } from "./gateway";
-import { GroqProvider, NvidiaProvider, OpenRouterProvider, GoogleAIStudioProvider } from "./providers/index";
-import { DeterministicFallbackProvider } from "./providers/deterministic";
-import { loadConfig } from "./config/index";
-import { createConsoleLogger } from "./utils/log";
-import type { AIProvider, ProviderName } from "./contracts/index";
+import { AIGateway, type GatewayOptions } from "./gateway.js";
+import { GroqProvider, NvidiaProvider, OpenRouterProvider, GoogleAIStudioProvider } from "./providers/index.js";
+import { DeterministicFallbackProvider } from "./providers/deterministic.js";
+import { loadConfig } from "./config/index.js";
+import { createConsoleLogger } from "./utils/log.js";
+import type { AIProvider, ProviderName } from "./contracts/index.js";
 
-export * from "./contracts/index";
-export * from "./validation/index";
-export * as Features from "./features/index";
-export { AIGateway } from "./gateway";
-export { loadConfig } from "./config/index";
-export { createConsoleLogger } from "./utils/log";
-export { DeterministicFallbackProvider, UNAVAILABLE_MESSAGE } from "./providers/deterministic";
+export * from "./contracts/index.js";
+export * from "./validation/index.js";
+export * as Features from "./features/index.js";
+export { AIGateway } from "./gateway.js";
+export { loadConfig } from "./config/index.js";
+export { createConsoleLogger } from "./utils/log.js";
+export { DeterministicFallbackProvider, UNAVAILABLE_MESSAGE } from "./providers/deterministic.js";
 
 export function createGatewayFromEnv(overrides: Partial<GatewayOptions> & { logger?: ReturnType<typeof createConsoleLogger> } = {}): AIGateway {
   const cfg = loadConfig();
