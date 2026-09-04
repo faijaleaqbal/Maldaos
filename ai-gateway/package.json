@@ -6,7 +6,8 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build:raw": "tsc -p tsconfig.build.json",
+    "build": "npm run build:raw && node scripts/rewrite-ts-imports.mjs",
     "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts",
     "lint": "tsc --noEmit"
   },

@@ -37,14 +37,56 @@ export default function IssueDetailPage() {
   const { issues, updateIssueStatus, addComment, toggleUpvote, loading } = useIssues();
   const { user, isAdmin } = useAuth();
 
+  function dbAIResultToAIAnalysis(row: any) {
+    return {
+      detectedCategory: row.category ?? 'OTHER',
+      suggestedSeverity: row.severity ?? row.priority ?? 'MEDIUM',
+      suggestedPriority: row.priority ?? 'MEDIUM',
+      confidence: row.isFallback ? 0 : (typeof row.confidence === 'number' ? row.confidence : 0),
+      summary: row.summary,
+      suggestedDepartment: '',
+      possibleDuplicates: (row.possibleDuplicates ?? []).map((d: any) => ({
+        id: d.existingIssueId,
+        ticketNumber: d.existingIssueId.slice(0, 8),
+        title: d.reason,
+        similarityScore: 0,
+        status: 'REPORTED' as const,
+      })),
+      urgencyFactors: row.urgencyFactors ?? [],
+      isFallback: !!row.isFallback,
+      analyzedAt: row.analyzedAt,
+      gatewayProvider: row.isFallback
+        ? 'Deterministic triage (offline) — no provider responded'
+        : `${row.provider} / ${row.model}`,
+    };
+  }
+
   const [commentText, setCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [persistedAI, setPersistedAI] = useState<any | null>(null);
 
   // Find issue by id or ticketNumber
   const issue = issues.find(
     (i) => i.id === id || i.ticketNumber.toLowerCase() === (id as string).toLowerCase()
   );
+
+  // Load the latest persisted AI analysis for this issue from the
+  // server route (which reads public.ai_analysis). This is the live
+  // data path; the in-memory `issue.aiAnalysis` is a fallback only.
+  useEffect(() => {
+    if (!issue?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`/api/ai/latest?issueId=${encodeURIComponent(issue.id)}`, { cache: 'no-store' });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!cancelled && j?.found) setPersistedAI(j.result);
+      } catch { /* silent */ }
+    })();
+    return () => { cancelled = true; };
+  }, [issue?.id]);
 
   if (loading) {
     return <LoadingState fullPage message="Fetching ticket lifecycle and telemetry..." />;
@@ -272,12 +314,12 @@ export default function IssueDetailPage() {
             <IssueTimeline events={issue.timeline || []} currentStatus={issue.status} />
           </div>
 
-          {/* AI Analysis Panel */}
+          {/* AI Analysis Panel — prefer persisted DB row, fall back to in-memory */}
           <div className="space-y-2">
             <h3 className="font-serif font-semibold text-base text-ink">
               Automated Triage Evaluation
             </h3>
-            <AIAnalysisPanel analysis={issue.aiAnalysis} />
+            <AIAnalysisPanel analysis={persistedAI ? dbAIResultToAIAnalysis(persistedAI) : issue.aiAnalysis} />
           </div>
         </div>
 

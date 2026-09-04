@@ -1,153 +1,82 @@
-import { AIAnalysis, Issue, IssueCategory, IssuePriority } from '@/types';
+/**
+ * Client-side AI service. The browser calls our own /api/ai/* route;
+ * the route server-side calls the AI gateway. The browser NEVER sees
+ * provider API keys.
+ *
+ * AI output integrity:
+ *   - When the gateway says status='REAL_PROVIDER', we present the
+ *     provider's confidence (whatever it actually returned, 0..1).
+ *   - When the gateway says status='RULE_BASED_FALLBACK', we set
+ *     confidence=0, isFallback=true, and label the source as
+ *     "Deterministic triage (offline)".
+ *
+ * The legacy keyword engine is REMOVED. It is no longer imported
+ * anywhere; if all providers are down, the user sees a clear
+ * "AI analysis unavailable" message.
+ */
+import { AIAnalysis, Issue } from '@/types';
+
+export interface AIServiceRequest {
+  title: string;
+  description: string;
+  building?: string;
+  existingIssues?: Issue[];
+  /** Optional. If provided, the server persists the result. */
+  issueId?: string;
+}
+
+export interface AIServiceResponse {
+  ok: boolean;
+  analysis: AIAnalysis;
+  /** Surface errors without throwing so the report flow can continue. */
+  error?: string;
+}
+
+const UNFALLBACK_SUMMARY = 'AI analysis unavailable. Manual triage will be used.';
 
 export const AIService = {
   /**
-   * Analyze an issue description and images to suggest category, priority, and check duplicates.
-   * Never throws uncaught errors; always returns fallback if AI gateway is unreachable or disabled.
+   * Call the server AI route. Never throws. If the request fails
+   * for any reason, returns a clearly-labelled fallback.
    */
   async analyzeIssue(
     title: string,
     description: string,
     building: string,
-    existingIssues: Issue[] = []
+    existingIssues: Issue[] = [],
+    context: { issueId?: string } = {}
   ): Promise<AIAnalysis> {
+    const r = await this.request({ title, description, building, existingIssues, ...context });
+    return r.analysis;
+  },
+
+  async request(req: AIServiceRequest): Promise<AIServiceResponse> {
     try {
-      // If client environment allows calling server API route:
-      const response = await fetch('/api/ai/analyze', {
+      const resp = await fetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, building }),
-      }).catch(() => null);
-
-      if (response && response.ok) {
-        const data = await response.json();
-        return data as AIAnalysis;
+        body: JSON.stringify({
+          title: req.title,
+          description: req.description,
+          locationName: req.building,
+          issueId: req.issueId,
+        }),
+      });
+      if (!resp.ok) {
+        return { ok: false, analysis: this.fallback(req.title ?? '', req.description ?? '', req.building ?? '', 'gateway error'), error: `HTTP ${resp.status}` };
       }
-    } catch (e) {
-      // continue to local intelligent triage engine
+      const data = await resp.json();
+      return { ok: true, analysis: toAIAnalysisShape(data, req) };
+    } catch (e: any) {
+      return { ok: false, analysis: this.fallback(req.title ?? '', req.description ?? '', req.building ?? '', e?.message ?? 'network error'), error: e?.message };
     }
-
-    // Local deterministic contextual triage (guarantees 100% offline & demo reliability)
-    return this.generateDeterministicTriage(title, description, building, existingIssues);
   },
 
-  generateDeterministicTriage(
-    title: string,
-    description: string,
-    building: string,
-    existingIssues: Issue[]
-  ): AIAnalysis {
-    const text = `${title} ${description} ${building}`.toLowerCase();
-
-    let detectedCategory: IssueCategory = 'OTHER';
-    let suggestedPriority: IssuePriority = 'MEDIUM';
-    let suggestedDepartment = 'Campus Infrastructure Helpdesk';
-    let confidence = 0.88;
-    const urgencyFactors: string[] = [];
-
-    // Keyword intelligence
-    if (text.includes('spark') || text.includes('fire') || text.includes('arcing') || text.includes('shock') || text.includes('short circuit') || text.includes('gas')) {
-      detectedCategory = 'ELECTRICAL';
-      suggestedPriority = 'CRITICAL';
-      suggestedDepartment = 'Electrical & Facility Operations';
-      confidence = 0.98;
-      urgencyFactors.push('Immediate life safety or electrical fire risk detected');
-      urgencyFactors.push('Urgent physical isolation recommended');
-    } else if (text.includes('wire') || text.includes('switch') || text.includes('light') || text.includes('bulb') || text.includes('power') || text.includes('breaker') || text.includes('fan')) {
-      detectedCategory = 'ELECTRICAL';
-      suggestedPriority = text.includes('blackout') || text.includes('hall') ? 'HIGH' : 'MEDIUM';
-      suggestedDepartment = 'Electrical & Facility Operations';
-      confidence = 0.91;
-      urgencyFactors.push('Electrical fixture degradation reported');
-    } else if (text.includes('leak') || text.includes('water') || text.includes('cooler') || text.includes('tap') || text.includes('pipe') || text.includes('drain') || text.includes('washroom') || text.includes('toilet') || text.includes('flood')) {
-      detectedCategory = 'PLUMBING';
-      suggestedPriority = text.includes('flood') || text.includes('corridor') || text.includes('slip') ? 'HIGH' : 'MEDIUM';
-      suggestedDepartment = 'Civil Works & Plumbing';
-      confidence = 0.94;
-      if (text.includes('slip') || text.includes('corridor')) {
-        urgencyFactors.push('Slip and fall hazard in pedestrian corridor');
-      }
-      urgencyFactors.push('Continuous water resource loss or potential masonry dampness');
-    } else if (text.includes('wifi') || text.includes('wi-fi') || text.includes('network') || text.includes('internet') || text.includes('router') || text.includes('lan') || text.includes('server') || text.includes('access point') || text.includes('signal')) {
-      detectedCategory = 'IT_NETWORK';
-      suggestedPriority = text.includes('library') || text.includes('exam') || text.includes('lab') ? 'HIGH' : 'MEDIUM';
-      suggestedDepartment = 'IT & Network Cell';
-      confidence = 0.92;
-      urgencyFactors.push('Impacts digital academic services or examination connectivity');
-    } else if (text.includes('projector') || text.includes('screen') || text.includes('bench') || text.includes('blackboard') || text.includes('desk') || text.includes('podium') || text.includes('classroom') || text.includes('lecture')) {
-      detectedCategory = 'FACILITY_CLASSROOM';
-      suggestedPriority = 'HIGH';
-      suggestedDepartment = 'Academic Infrastructure & IQAC';
-      confidence = 0.93;
-      urgencyFactors.push('Directly disrupts ongoing classroom instruction');
-    } else if (text.includes('computer') || text.includes('pc') || text.includes('keyboard') || text.includes('microscope') || text.includes('centrifuge') || text.includes('apparatus') || text.includes('lab') || text.includes('workstation')) {
-      detectedCategory = 'LAB_EQUIPMENT';
-      suggestedPriority = 'MEDIUM';
-      suggestedDepartment = 'IT & Network Cell';
-      confidence = 0.89;
-      urgencyFactors.push('Laboratory workstation unavailability');
-    } else if (text.includes('garbage') || text.includes('waste') || text.includes('trash') || text.includes('smell') || text.includes('stink') || text.includes('clean') || text.includes('dirt') || text.includes('canteen')) {
-      detectedCategory = 'SANITATION';
-      suggestedPriority = text.includes('canteen') ? 'HIGH' : 'MEDIUM';
-      suggestedDepartment = 'Civil Works & Sanitation';
-      confidence = 0.90;
-      urgencyFactors.push('Hygiene standards in shared student dining or common area');
-    } else if (text.includes('stair') || text.includes('lock') || text.includes('guard') || text.includes('gate') || text.includes('theft') || text.includes('rail') || text.includes('danger') || text.includes('fall')) {
-      detectedCategory = 'SAFETY_SECURITY';
-      suggestedPriority = 'HIGH';
-      suggestedDepartment = 'Campus Security & Estate Office';
-      confidence = 0.92;
-      urgencyFactors.push('Physical security or perimeter integrity concern');
-    } else if (text.includes('hostel') || text.includes('mess') || text.includes('room') || text.includes('bed') || text.includes('warden')) {
-      detectedCategory = 'HOSTEL';
-      suggestedPriority = 'MEDIUM';
-      suggestedDepartment = 'Hostel Superintendent Office';
-      confidence = 0.87;
-      urgencyFactors.push('Residential student accommodation welfare');
-    }
-
-    // Check for possible duplicates among existing issues
-    const words = title.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-    const possibleDuplicates = existingIssues
-      .filter((iss) => iss.status !== 'RESOLVED' && iss.status !== 'CLOSED')
-      .map((iss) => {
-        const issWords = `${iss.title} ${iss.location.building}`.toLowerCase();
-        let matchCount = 0;
-        words.forEach((w) => {
-          if (issWords.includes(w)) matchCount++;
-        });
-        const score = words.length > 0 ? matchCount / words.length : 0;
-        return {
-          id: iss.id,
-          ticketNumber: iss.ticketNumber,
-          title: iss.title,
-          similarityScore: Math.min(0.95, Number((score * 0.8 + (iss.location.building === building ? 0.2 : 0)).toFixed(2))),
-          status: iss.status,
-        };
-      })
-      .filter((d) => d.similarityScore >= 0.4)
-      .slice(0, 3);
-
-    const summary = `${detectedCategory.replace('_', ' ')} concern reported at ${building}. ${
-      urgencyFactors[0] || 'Standard maintenance resolution pathway recommended.'
-    }`;
-
-    return {
-      detectedCategory,
-      suggestedSeverity: suggestedPriority,
-      suggestedPriority,
-      confidence: Number(confidence.toFixed(2)),
-      summary,
-      suggestedDepartment,
-      possibleDuplicates,
-      urgencyFactors,
-      gatewayProvider: 'CampusPulse Triage Engine (Institutional Rules + Malda Context)',
-      analyzedAt: new Date().toISOString(),
-      isFallback: false,
-    };
-  },
-
-  getFallbackAnalysis(reason = 'AI analysis temporarily unavailable. You can continue processing this report manually.'): AIAnalysis {
+  /**
+   * Clear, honest fallback. confidence=0, isFallback=true, source clearly
+   * labelled so the UI can NEVER present this as "real AI".
+   */
+  fallback(title: string, description: string, building: string, reason = UNFALLBACK_SUMMARY): AIAnalysis {
     return {
       detectedCategory: 'OTHER',
       suggestedSeverity: 'MEDIUM',
@@ -159,6 +88,62 @@ export const AIService = {
       urgencyFactors: ['Manual admin review required'],
       isFallback: true,
       analyzedAt: new Date().toISOString(),
+      gatewayProvider: 'Deterministic triage (offline) — no provider responded',
     };
   },
+
+  getFallbackAnalysis(reason: string = UNFALLBACK_SUMMARY): AIAnalysis {
+    return this.fallback('', '', '', reason);
+  },
 };
+
+/** Map the server's structured response to the AIAnalysis product type. */
+function toAIAnalysisShape(
+  data: any,
+  req: AIServiceRequest
+): AIAnalysis {
+  const isReal = data?.status === 'REAL_PROVIDER';
+  const rec = data?.recommendation ?? {};
+  // possibleDuplicates from server (if any) — note: the analyze endpoint
+  // returns an empty array; duplicates are computed in a separate call
+  // for performance. The Issue detail page joins them later.
+  const duplicates = (data?.possibleDuplicates ?? []).map((d: any) => ({
+    id: d.existingIssueId,
+    ticketNumber: d.existingIssueId.slice(0, 8),
+    title: d.reason,
+    similarityScore: 0, // NEVER fabricated
+    status: 'REPORTED' as const,
+  }));
+
+  return {
+    detectedCategory: rec.category ?? 'OTHER',
+    suggestedSeverity: rec.severity ?? rec.priority ?? 'MEDIUM',
+    suggestedPriority: rec.priority ?? 'MEDIUM',
+    confidence: isReal && typeof rec.confidence === 'number' ? Math.max(0, Math.min(1, rec.confidence)) : 0,
+    summary: isReal
+      ? (rec.summary ?? UNFALLBACK_SUMMARY)
+      : (data?.isFallback ? UNFALLBACK_SUMMARY : UNFALLBACK_SUMMARY),
+    suggestedDepartment: departmentForCategory(rec.category ?? 'OTHER'),
+    possibleDuplicates: duplicates,
+    urgencyFactors: data?.urgencyFactors ?? [],
+    isFallback: !isReal,
+    analyzedAt: data?.analyzedAt ?? new Date().toISOString(),
+    gatewayProvider: isReal
+      ? `${data?.provider} / ${data?.model}`
+      : 'Deterministic triage (offline) — no provider responded',
+  };
+}
+
+function departmentForCategory(c: string): string {
+  switch (c) {
+    case 'ELECTRICAL': return 'Electrical & Facility Operations';
+    case 'PLUMBING': return 'Civil Works & Plumbing';
+    case 'IT_NETWORK': return 'IT & Network Cell';
+    case 'FACILITY_CLASSROOM': return 'Academic Infrastructure & IQAC';
+    case 'LAB_EQUIPMENT': return 'IT & Network Cell';
+    case 'SANITATION': return 'Civil Works & Sanitation';
+    case 'SAFETY_SECURITY': return 'Campus Security & Estate Office';
+    case 'HOSTEL': return 'Hostel Superintendent Office';
+    default: return 'Campus Infrastructure Helpdesk';
+  }
+}

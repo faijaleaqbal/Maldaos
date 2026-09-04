@@ -51,30 +51,33 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
     );
   }
 
-  const confidencePct = Math.round((analysis.confidence || 0.85) * 100);
+  const confidencePct = Math.round((analysis.confidence || 0) * 100);
+  const isFallback = !!analysis.isFallback;
 
   return (
-    <div className="rounded-lg border border-ai-border bg-ai-surface p-4 sm:p-5 relative overflow-hidden transition-all">
+    <div className={`rounded-lg border ${isFallback ? 'border-warm-300 bg-warm-100' : 'border-ai-border bg-ai-surface'} p-4 sm:p-5 relative overflow-hidden transition-all`}>
       {/* Subtle top indicator - NOT neon, restrained institutional violet */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-ai-400 via-ai-500 to-ai-400" />
+      {!isFallback && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-ai-400 via-ai-500 to-ai-400" />
+      )}
 
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-ai-border/60">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-ai-100 flex items-center justify-center text-ai-700">
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isFallback ? 'bg-warm-200 text-ink-muted' : 'bg-ai-100 text-ai-700'}`}>
             <Sparkles className="w-3.5 h-3.5" />
           </div>
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-ai-text flex items-center gap-1.5">
-              AI Operational Assistant
-              <span className="text-[10px] font-normal lowercase tracking-normal px-1.5 py-0.5 rounded bg-ai-100 text-ai-700">
-                recommendation only
+            <h4 className={`text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 ${isFallback ? 'text-ink' : 'text-ai-text'}`}>
+              {isFallback ? 'Rule-Based Triage' : 'AI Operational Assistant'}
+              <span className={`text-[10px] font-normal lowercase tracking-normal px-1.5 py-0.5 rounded ${isFallback ? 'bg-warm-200 text-ink-muted' : 'bg-ai-100 text-ai-700'}`}>
+                {isFallback ? 'no provider responded' : 'recommendation only'}
               </span>
             </h4>
           </div>
         </div>
 
-        {analysis.confidence > 0 && (
+        {analysis.confidence > 0 && !isFallback && (
           <div className="flex items-center gap-1.5 text-xs text-ai-text">
             <span className="text-ink-muted text-[11px]">Confidence:</span>
             <span className="font-semibold text-ai-800">{confidencePct}%</span>
@@ -82,34 +85,43 @@ export const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
         )}
       </div>
 
-      {/* Structured Recommendations Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 my-3.5">
-        <div className="bg-white/80 rounded-md border border-ai-border/80 p-2.5">
-          <span className="block text-[11px] text-ink-muted uppercase font-medium mb-1">
-            Detected Category Recommendation
-          </span>
-          <div className="flex items-center gap-1.5">
-            <Badge variant="ai" size="md">
-              {analysis.detectedCategory.replace('_', ' ')}
-            </Badge>
-          </div>
+      {/* Provider provenance line */}
+      {analysis.gatewayProvider && (
+        <div className="text-[11px] text-ink-muted pt-2 italic">
+          {analysis.gatewayProvider}
         </div>
+      )}
 
-        <div className="bg-white/80 rounded-md border border-ai-border/80 p-2.5">
-          <span className="block text-[11px] text-ink-muted uppercase font-medium mb-1">
-            AI Suggested Priority
-          </span>
-          <div className="flex items-center gap-1.5">
-            <PriorityBadge priority={analysis.suggestedPriority} size="md" prefix="AI Suggested: " />
+      {/* Structured Recommendations Grid */}
+      {!isFallback && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 my-3.5">
+          <div className="bg-white/80 rounded-md border border-ai-border/80 p-2.5">
+            <span className="block text-[11px] text-ink-muted uppercase font-medium mb-1">
+              Detected Category Recommendation
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Badge variant="ai" size="md">
+                {analysis.detectedCategory.replace('_', ' ')}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="bg-white/80 rounded-md border border-ai-border/80 p-2.5">
+            <span className="block text-[11px] text-ink-muted uppercase font-medium mb-1">
+              AI Suggested Priority
+            </span>
+            <div className="flex items-center gap-1.5">
+              <PriorityBadge priority={analysis.suggestedPriority} size="md" prefix="AI Suggested: " />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Summary */}
       {analysis.summary && (
-        <div className="bg-white/90 rounded-md border border-ai-border/60 p-3 mb-3">
-          <span className="block text-[11px] font-semibold text-ai-800 uppercase tracking-wider mb-1">
-            Automated Synthesis
+        <div className={`${isFallback ? 'bg-white' : 'bg-white/90'} rounded-md border ${isFallback ? 'border-warm-200' : 'border-ai-border/60'} p-3 mb-3`}>
+          <span className={`block text-[11px] font-semibold uppercase tracking-wider mb-1 ${isFallback ? 'text-ink-muted' : 'text-ai-800'}`}>
+            {isFallback ? 'Status' : 'Automated Synthesis'}
           </span>
           <p className="text-xs sm:text-sm text-ink leading-relaxed font-sans">{analysis.summary}</p>
         </div>

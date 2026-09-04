@@ -43,6 +43,20 @@ const CATEGORY_OPTIONS: { label: string; value: IssueCategory }[] = [
   { label: 'Other Facility Concern', value: 'OTHER' },
 ];
 
+function departmentFor(c: IssueCategory): string {
+  switch (c) {
+    case 'ELECTRICAL': return 'Electrical & Facility Operations';
+    case 'PLUMBING': return 'Civil Works & Plumbing';
+    case 'IT_NETWORK': return 'IT & Network Cell';
+    case 'FACILITY_CLASSROOM': return 'Academic Infrastructure & IQAC';
+    case 'LAB_EQUIPMENT': return 'IT & Network Cell';
+    case 'SANITATION': return 'Civil Works & Sanitation';
+    case 'SAFETY_SECURITY': return 'Campus Security & Estate Office';
+    case 'HOSTEL': return 'Hostel Superintendent Office';
+    default: return 'Campus Infrastructure Helpdesk';
+  }
+}
+
 export const ReportWorkflow: React.FC = () => {
   const router = useRouter();
   const { createIssue, issues } = useIssues();
@@ -106,35 +120,17 @@ export const ReportWorkflow: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      // Perform AI Analysis Triage
-      let analysis;
-      try {
-        analysis = await AIService.analyzeIssue(title, description, location.building, issues);
-      } catch (e) {
-        analysis = AIService.getFallbackAnalysis();
-      }
-
-      // Department routing mapping
-      let department = 'Campus Infrastructure Helpdesk';
-      if (category === 'ELECTRICAL') department = 'Electrical & Facility Operations';
-      else if (category === 'PLUMBING') department = 'Civil Works & Plumbing';
-      else if (category === 'IT_NETWORK') department = 'IT & Network Cell';
-      else if (category === 'FACILITY_CLASSROOM') department = 'Academic Infrastructure & IQAC';
-      else if (category === 'LAB_EQUIPMENT') department = 'IT & Network Cell';
-      else if (category === 'SANITATION') department = 'Civil Works & Sanitation';
-      else if (category === 'SAFETY_SECURITY') department = 'Campus Security & Estate Office';
-      else if (category === 'HOSTEL') department = 'Hostel Superintendent Office';
-
-      const finalPriority: IssuePriority = isSafetyHazard
-        ? 'CRITICAL'
-        : analysis.suggestedPriority || priority;
-
+      // Create the issue FIRST so the user can never be blocked by AI
+      // failure. The issue row goes to the DB; AI is an assistive
+      // side-effect that runs server-side and writes a recommendation
+      // to public.ai_analysis. If the AI is down, the issue is still
+      // created and the panel shows "AI analysis unavailable.".
       const created = await createIssue({
         title,
         description,
         category,
-        priority: finalPriority,
-        status: 'AI_ANALYZED',
+        priority,
+        status: 'REPORTED',
         location,
         reporter: {
           id: user.id,
@@ -143,11 +139,41 @@ export const ReportWorkflow: React.FC = () => {
           studentId: user.studentId,
           department: user.department,
         },
-        department,
+        department: departmentFor(category),
         images,
-        aiAnalysis: analysis,
+        // aiAnalysis is filled in below from the server response.
       });
 
+      // Now invoke the real AI server route. The route is server-side;
+      // it calls the provider-agnostic AI gateway, validates the
+      // response, and persists the result to public.ai_analysis.
+      // NEVER throws to the caller; returns a clearly-labelled
+      // fallback when no provider responds.
+      const ai = await AIService.request({
+        title,
+        description,
+        building: location.building,
+        existingIssues: issues,
+        issueId: created.id,
+      });
+
+      // Department routing mapping (UI-side display name).
+      const department = departmentFor(category);
+      const finalPriority: IssuePriority = isSafetyHazard
+        ? 'CRITICAL'
+        : (ai.ok && !ai.analysis.isFallback ? (ai.analysis.suggestedPriority || priority) : priority);
+
+      // Persist the AI analysis back onto the in-memory issue so the
+      // confirmation page shows it. Real persistence is in Supabase.
+      const aiAnalysis = ai.analysis;
+      // Use a closure-friendly field set
+      (created as any).aiAnalysis = aiAnalysis;
+      if (ai.ok) {
+        try {
+          // Re-attach the priority recommendation for the receipt view.
+          (created as any).priority = finalPriority;
+        } catch { /* no-op */ }
+      }
       setCreatedIssue(created);
       setStep(5);
     } catch (err: any) {

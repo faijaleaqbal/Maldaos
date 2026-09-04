@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { isMockModeEnabled, setMockMode, isSupabaseConfigured } from '@/lib/supabase';
 import { useIssues } from '@/context/IssuesContext';
 import { Button } from '@/components/ui/Button';
@@ -21,11 +21,36 @@ export default function SettingsPage() {
   const [isMock, setIsMock] = useState(isMockModeEnabled());
   const [hasSupabase] = useState(isSupabaseConfigured());
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [aiHealth, setAiHealth] = useState<{
+    active: boolean;
+    realProviderSeen: boolean;
+    snapshot: Array<{ provider: string; status: string; n: number; lastAt: string; avgLatencyMs: number }>;
+    fetchedAt?: string;
+  } | null>(null);
+  const [aiHealthError, setAiHealthError] = useState<string | null>(null);
 
   const [slaCritical, setSlaCritical] = useState('1');
   const [slaHigh, setSlaHigh] = useState('4');
   const [slaMedium, setSlaMedium] = useState('24');
   const [slaLow, setSlaLow] = useState('72');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/ai/health', { cache: 'no-store' });
+        if (!r.ok) {
+          if (!cancelled) setAiHealthError(`HTTP ${r.status}`);
+          return;
+        }
+        const j = await r.json();
+        if (!cancelled) setAiHealth(j);
+      } catch (e: any) {
+        if (!cancelled) setAiHealthError(e?.message ?? 'unreachable');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleToggleMock = () => {
     const next = !isMock;
@@ -106,25 +131,77 @@ export default function SettingsPage() {
             <Cpu className="w-4 h-4 text-ai-600" />
             <h3 className="font-serif font-bold text-base text-ai-900">AI Operational Gateway</h3>
           </div>
-          <span className="text-xs font-mono bg-ai-100 text-ai-800 font-semibold px-2 py-0.5 rounded border border-ai-border">
-            GATEWAY ACTIVE
-          </span>
+          {aiHealth ? (
+            aiHealth.realProviderSeen ? (
+              <span
+                data-testid="ai-badge"
+                className="text-xs font-mono bg-emerald-100 text-emerald-900 font-semibold px-2 py-0.5 rounded border border-emerald-300"
+              >
+                REAL PROVIDER RESPONSES
+              </span>
+            ) : aiHealth.active ? (
+              <span
+                data-testid="ai-badge"
+                className="text-xs font-mono bg-amber-100 text-amber-900 font-semibold px-2 py-0.5 rounded border border-amber-300"
+              >
+                RULE-BASED FALLBACK ONLY
+              </span>
+            ) : (
+              <span
+                data-testid="ai-badge"
+                className="text-xs font-mono bg-warm-100 text-ink-muted font-semibold px-2 py-0.5 rounded border border-warm-300"
+              >
+                NO AI ACTIVITY (24h)
+              </span>
+            )
+          ) : aiHealthError ? (
+            <span className="text-xs font-mono bg-rose-100 text-rose-900 font-semibold px-2 py-0.5 rounded border border-rose-300">
+              HEALTH UNREACHABLE
+            </span>
+          ) : (
+            <span className="text-xs font-mono bg-warm-100 text-ink-muted font-semibold px-2 py-0.5 rounded border border-warm-300">
+              LOADING…
+            </span>
+          )}
         </div>
 
         <p className="text-xs text-ink-muted leading-relaxed">
-          The AI engine provides non-binding category suggestions, priority weighting, and duplicate detection. No private AI keys are exposed to client browsers. If the external gateway is unreachable, the system automatically runs the deterministic institutional fallback triage.
+          The AI engine provides non-binding category suggestions, priority weighting, and duplicate detection. No private AI keys are exposed to client browsers. The runtime path is <code className="font-mono text-[11px]">/api/ai/analyze</code> (server-only) which calls the provider-agnostic AI Gateway, validates the response, and persists the result to <code className="font-mono text-[11px]">public.ai_analysis</code>. If the external gateway is unreachable, the system records a <strong>RULE_BASED_FALLBACK</strong> row with confidence 0 — the UI then clearly labels the panel &quot;Rule-Based Triage (no provider responded)&quot; and never presents the fallback as real AI.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="p-3 bg-white rounded border border-ai-border space-y-0.5">
-            <span className="text-[11px] text-ink-muted uppercase font-semibold">Triage Confidence Minimum</span>
-            <div className="font-mono font-bold text-ink">80% Threshold</div>
+          <div className="p-3 bg-white rounded border border-ai-border space-y-1">
+            <span className="text-[11px] text-ink-muted uppercase font-semibold">Last 24h Real Provider Calls</span>
+            <div className="font-mono font-bold text-ink">
+              {aiHealth?.snapshot
+                .filter(s => s.status === 'REAL_PROVIDER')
+                .reduce((a, s) => a + s.n, 0) || 0}
+            </div>
+            {aiHealth?.snapshot && aiHealth.snapshot.length > 0 && (
+              <div className="text-[10px] text-ink-muted space-y-0.5">
+                {aiHealth.snapshot.map(s => (
+                  <div key={`${s.provider}-${s.status}`} className="flex justify-between">
+                    <span className="font-mono">{s.provider}</span>
+                    <span className="text-ink-muted">{s.status} · {s.n} · {s.avgLatencyMs}ms</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="p-3 bg-white rounded border border-ai-border space-y-0.5">
-            <span className="text-[11px] text-ink-muted uppercase font-semibold">Duplicate Matching Sensitivity</span>
-            <div className="font-mono font-bold text-ink">40% Cosine Heuristic</div>
+          <div className="p-3 bg-white rounded border border-ai-border space-y-1">
+            <span className="text-[11px] text-ink-muted uppercase font-semibold">Duplicate Matching</span>
+            <div className="font-mono font-bold text-ink">AI candidates only — no fake scores</div>
+            <div className="text-[10px] text-ink-muted">
+              Duplicate detection is provider-driven via <code>detect.duplicate</code> — no synthetic similarity heuristics. The product receives only <code>{`{ existingIssueId, reason }`}</code> pairs.
+            </div>
           </div>
         </div>
+
+        {aiHealthError && (
+          <div className="text-[11px] text-rose-700 italic">
+            Could not reach <code>/api/ai/health</code>: {aiHealthError}
+          </div>
+        )}
       </div>
 
       {/* Section 3: Target SLA Thresholds */}
