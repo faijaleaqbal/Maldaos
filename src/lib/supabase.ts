@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { BackendError } from '@/types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -50,3 +51,59 @@ export const getSupabaseClient = (): SupabaseClient | null => {
   }
   return clientInstance;
 };
+
+/** Live mode = NOT mock mode. Services branch on this; never silently blend. */
+export const isLiveMode = (): boolean => !isMockModeEnabled();
+
+/**
+ * Require a configured Supabase client in live mode or throw a typed error.
+ * Live mode must NEVER silently fall back to mock data — callers surface this
+ * as a UI ErrorState instead.
+ */
+export const requireSupabaseClient = (): SupabaseClient => {
+  const client = getSupabaseClient();
+  if (!client) {
+    throw createBackendError(
+      'BACKEND_NOT_CONFIGURED',
+      'Live mode is enabled but Supabase is not configured (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY). Set NEXT_PUBLIC_USE_MOCK_DATA=true for the offline demo or provide valid keys.'
+    );
+  }
+  return client;
+};
+
+/**
+ * Build a typed BackendError from a Supabase/PostgREST error (or anything
+ * thrown). Backend RPCs raise `CODE: message` — the code prefix is stable and
+ * is what the UI branches on.
+ */
+export function createBackendError(
+  code: string,
+  message: string,
+  details?: unknown
+): BackendError {
+  const err = new Error(message) as BackendError;
+  err.code = code;
+  err.details = details;
+  err.name = 'BackendError';
+  return err;
+}
+
+/**
+ * Normalize any error value into a typed BackendError. Extracts the stable
+ * `CODE:` prefix from Postgres raise_exception messages when present.
+ */
+export function toBackendError(err: unknown, fallbackCode = 'UNKNOWN'): BackendError {
+  if (err instanceof Error && (err as BackendError).code) {
+    return err as BackendError;
+  }
+  const raw: { message?: string; code?: string; details?: string; hint?: string } =
+    typeof err === 'object' && err !== null
+      ? (err as Record<string, unknown>) as any
+      : { message: String(err) };
+  const message = raw.message || String(err);
+  const match = message.match(/^([A-Z][A-Z0-9_]+):\s*(.*)$/);
+  if (match) {
+    return createBackendError(match[1], match[2], raw.details);
+  }
+  return createBackendError(raw.code || fallbackCode, message, raw.details);
+}

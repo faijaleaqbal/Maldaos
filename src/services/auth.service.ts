@@ -1,10 +1,14 @@
-import { getSupabaseClient, isMockModeEnabled } from '@/lib/supabase';
+import { getSupabaseClient, isMockModeEnabled, toBackendError } from '@/lib/supabase';
+import { mapProfileToUser, ProfileRow } from '@/lib/backendTypes';
 import { User, UserRole } from '@/types';
 import { MOCK_USERS } from './mockData';
 
 const USER_STORAGE_KEY = 'campuspulse_active_user';
 
-// Test credentials matching database seed
+// Test credentials matching the database seed (LOCAL STACK ONLY — these are
+// the seeded demo accounts in campus-pulse-backend/scripts/seed.ts, used by
+// the 1-click persona buttons on the login page. Real logins always use the
+// password typed into the form).
 export const SEED_ACCOUNTS: Record<UserRole, { email: string; pass: string; label: string }> = {
   STUDENT: { email: 'student1@campus.test', pass: 'TestPass123!', label: 'Aarav Student (CSE)' },
   STAFF: { email: 'staff.cse@campus.test', pass: 'TestPass123!', label: 'Ravi Staff (CSE Maintenance)' },
@@ -12,7 +16,34 @@ export const SEED_ACCOUNTS: Record<UserRole, { email: string; pass: string; labe
   SUPER_ADMIN: { email: 'super@campus.test', pass: 'TestPass123!', label: 'Principal Super (Executive Admin)' },
 };
 
+/**
+ * Load the authoritative profile row for a user id. Role/department/full_name
+ * come from the DB ONLY — browser user_metadata.role is never trusted.
+ * Throws typed error when the profile is missing (live mode must not invent
+ * a role).
+ */
+async function loadDbUser(userId: string, email?: string | null): Promise<User> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    throw toBackendError({ message: 'BACKEND_NOT_CONFIGURED: Supabase client missing.' }, 'BACKEND_NOT_CONFIGURED');
+  }
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*, colleges(name), departments(name, code)')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error || !profile) {
+    throw toBackendError(
+      { message: 'PROFILE_NOT_FOUND: your account profile is unavailable in the database. Contact the administrator.' },
+      'PROFILE_NOT_FOUND'
+    );
+  }
+  return mapProfileToUser(profile as ProfileRow, email);
+}
+
 export const AuthService = {
+  /** Restore session on load (live: DB profile; mock: stored persona). */
   async getSessionUser(): Promise<User | null> {
     if (isMockModeEnabled()) {
       return this.getCurrentUser();
@@ -26,39 +57,7 @@ export const AuthService = {
       if (sessionErr || !session?.user) {
         return null;
       }
-
-      const { data: profile, error: profErr } = await supabase
-        .from('profiles')
-        .select('*, colleges(name), departments(name, code)')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profErr || !profile) {
-        console.warn('Could not fetch authoritative profile:', profErr);
-        // Fallback user from session metadata if profile trigger is slightly delayed
-        const fallbackRole = (session.user.user_metadata?.role as UserRole) || 'STUDENT';
-        const user: User = {
-          id: session.user.id,
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-          email: session.user.email || '',
-          role: fallbackRole,
-          department: 'Malda College',
-        };
-        this.setCurrentUser(user);
-        return user;
-      }
-
-      const user: User = {
-        id: profile.id,
-        name: profile.full_name || session.user.email?.split('@')[0] || 'User',
-        email: session.user.email || '',
-        role: profile.role as UserRole,
-        department: profile.departments?.name || profile.colleges?.name || 'Malda College',
-        phone: profile.phone || undefined,
-        studentId: profile.role === 'STUDENT' ? `MC-${profile.id.slice(0, 6).toUpperCase()}` : undefined,
-        staffId: profile.role !== 'STUDENT' ? `MC-STF-${profile.id.slice(0, 6).toUpperCase()}` : undefined,
-      };
-
+      const user = await loadDbUser(session.user.id, session.user.email);
       this.setCurrentUser(user);
       return user;
     } catch (err) {
@@ -67,6 +66,7 @@ export const AuthService = {
     }
   },
 
+  /** MOCK MODE ONLY: current persona from localStorage. */
   getCurrentUser(): User {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(USER_STORAGE_KEY);
@@ -87,6 +87,13 @@ export const AuthService = {
     }
   },
 
+  /**
+   * Switch role/persona.
+   *  - MOCK MODE: swaps the local demo persona (no auth involved).
+   *  - LIVE MODE: performs a REAL Supabase login as the seeded demo account
+   *    for that role. There is no role bypass: the resulting role is whatever
+   *    profiles.role says in the DB.
+   */
   async switchRole(role: UserRole): Promise<User> {
     if (!isMockModeEnabled()) {
       const creds = SEED_ACCOUNTS[role];
@@ -95,7 +102,15 @@ export const AuthService = {
         if (res.user) {
           return res.user;
         }
+        throw toBackendError(
+          { message: res.error || 'Could not switch to the seeded account for this role.' },
+          'ACCOUNT_SWITCH_FAILED'
+        );
       }
+      throw toBackendError(
+        { message: 'No seeded account exists for this role on the local stack.' },
+        'ACCOUNT_SWITCH_FAILED'
+      );
     }
 
     let targetUser: User = MOCK_USERS.student;
@@ -108,6 +123,11 @@ export const AuthService = {
     return targetUser;
   },
 
+  /**
+   * Login. LIVE mode requires the password from the form — there is NO
+   * hardcoded default. Role comes from profiles.role (DB), never from
+   * user_metadata.
+   */
   async login(
     email: string,
     password?: string,
@@ -119,11 +139,14 @@ export const AuthService = {
         return { user: null, error: 'Supabase client is not configured' };
       }
 
+      if (!password) {
+        return { user: null, error: 'Password is required.' };
+      }
+
       try {
-        const pass = password || 'TestPass123!';
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
-          password: pass,
+          password,
         });
 
         if (error) {
@@ -131,40 +154,29 @@ export const AuthService = {
         }
 
         if (data.user) {
-          const { data: profile, error: pErr } = await supabase
-            .from('profiles')
-            .select('*, colleges(name), departments(name, code)')
-            .eq('id', data.user.id)
-            .single();
-
-          const role = (profile?.role as UserRole) || (data.user.user_metadata?.role as UserRole) || 'STUDENT';
-          const user: User = {
-            id: data.user.id,
-            name: profile?.full_name || data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
-            email: data.user.email || email,
-            role,
-            department: profile?.departments?.name || profile?.colleges?.name || 'Malda College',
-            phone: profile?.phone || undefined,
-            studentId: role === 'STUDENT' ? `MC-${data.user.id.slice(0, 6).toUpperCase()}` : undefined,
-            staffId: role !== 'STUDENT' ? `MC-STF-${data.user.id.slice(0, 6).toUpperCase()}` : undefined,
-          };
-
-          this.setCurrentUser(user);
-          return { user, error: null };
+          try {
+            const user = await loadDbUser(data.user.id, data.user.email);
+            this.setCurrentUser(user);
+            return { user, error: null };
+          } catch (profErr: any) {
+            // Auth succeeded but the profile row is missing/damaged — fail
+            // loudly rather than falling back to metadata (role safety).
+            return { user: null, error: profErr.message || 'Profile unavailable. Contact administrator.' };
+          }
         }
+        return { user: null, error: 'Login returned no user.' };
       } catch (err: any) {
         return { user: null, error: err.message || 'Supabase authentication failed' };
       }
     }
 
-    // Mock mode authentication
+    // ---- MOCK MODE ----
     const matched = Object.values(MOCK_USERS).find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (matched) {
       this.setCurrentUser(matched);
       return { user: matched, error: null };
     }
 
-    // New mock login with selected role
     const chosenRole = rolePreference || 'STUDENT';
     const newUser: User = {
       id: `usr-${Date.now()}`,
@@ -178,11 +190,16 @@ export const AuthService = {
     return { user: newUser, error: null };
   },
 
+  /**
+   * Register. LIVE mode: real supabase.auth.signUp with full_name metadata —
+   * the backend's auth trigger (0006) creates the profiles row with role
+   * STUDENT. The DB trigger is the authority; the browser cannot choose a
+   * role at signup.
+   */
   async register(
     email: string,
     password: string,
-    fullName: string,
-    role: UserRole = 'STUDENT'
+    fullName: string
   ): Promise<{ user: User | null; error: string | null }> {
     if (!isMockModeEnabled()) {
       const supabase = getSupabaseClient();
@@ -204,16 +221,28 @@ export const AuthService = {
         }
 
         if (data.user) {
-          // If session created immediately:
-          return await this.login(email, password, role);
+          // Local stack has email confirmations disabled -> session exists
+          // immediately and the profile trigger has run. Sign in to establish
+          // the session and load the DB profile.
+          const res = await this.login(email, password);
+          if (res.user) {
+            return { user: res.user, error: null };
+          }
+          // No session (e.g. remote project with confirmations on):
+          // surface a clear message instead of a silent partial login.
+          return {
+            user: null,
+            error: 'Account created. Please confirm your email, then sign in.',
+          };
         }
+        return { user: null, error: 'Registration returned no user.' };
       } catch (err: any) {
         return { user: null, error: err.message || 'Registration failed' };
       }
     }
 
     // Mock mode
-    return this.login(email, password, role);
+    return this.login(email, password, 'STUDENT');
   },
 
   async logout(): Promise<void> {
@@ -234,4 +263,3 @@ export const AuthService = {
     return Object.values(MOCK_USERS);
   },
 };
-

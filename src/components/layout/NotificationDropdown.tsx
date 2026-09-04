@@ -18,15 +18,23 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     if (isOpen) {
-      setNotifications(NotificationService.getNotifications());
+      NotificationService.getNotifications().then((items) => {
+        if (!cancelled) setNotifications(items);
+      }).catch(() => {
+        if (!cancelled) setNotifications([]);
+      });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const markAllRead = () => {
-    const updated = NotificationService.markAllAsRead();
+  const markAllRead = async () => {
+    const updated = await NotificationService.markAllAsRead();
     setNotifications(updated);
   };
 

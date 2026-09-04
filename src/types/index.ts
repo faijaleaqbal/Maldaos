@@ -1,5 +1,15 @@
 export type UserRole = 'STUDENT' | 'STAFF' | 'DEPARTMENT_ADMIN' | 'SUPER_ADMIN';
 
+/**
+ * Typed integration error thrown by live services. `code` carries the
+ * backend's stable error prefix (FORBIDDEN, INVALID_TRANSITION, AUTH_REQUIRED,
+ * NOT_FOUND, RESOLUTION_REASON_REQUIRED, REOPEN_WINDOW_EXPIRED, ...).
+ */
+export interface BackendError extends Error {
+  code: string;
+  details?: unknown;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -175,7 +185,23 @@ export interface NotificationItem {
   message: string;
   ticketNumber?: string;
   ticketId?: string;
-  type: 'STATUS_CHANGE' | 'ASSIGNED' | 'RESOLVED' | 'CAMPUS_ALERT' | 'AI_NOTE';
+  /**
+   * DB notification_type set: ISSUE_ASSIGNED | STATUS_CHANGED | COMMENT_ADDED
+   * | RESOLVED | REOPENED | GENERAL. Legacy display-only values are kept in the
+   * union so old mock data still renders; mapping lives in lib/backendTypes.
+   */
+  type:
+    | 'ISSUE_ASSIGNED'
+    | 'STATUS_CHANGED'
+    | 'COMMENT_ADDED'
+    | 'RESOLVED'
+    | 'REOPENED'
+    | 'GENERAL'
+    // legacy (display-compat only)
+    | 'STATUS_CHANGE'
+    | 'ASSIGNED'
+    | 'CAMPUS_ALERT'
+    | 'AI_NOTE';
   read: boolean;
   createdAt: string;
 }

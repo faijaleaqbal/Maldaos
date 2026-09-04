@@ -1,8 +1,37 @@
 import { AnalyticsSummary, CampusHealthScore, Issue } from '@/types';
-import { getSupabaseClient, isMockModeEnabled } from '@/lib/supabase';
-import { MOCK_CAMPUS_HEALTH } from './mockData';
+import { getSupabaseClient, isMockModeEnabled, toBackendError } from '@/lib/supabase';
 
 export const AnalyticsService = {
+  /**
+   * Server-side admin stats (auth-scoped via admin_stats RPC):
+   * DEPARTMENT_ADMIN -> own department, SUPER_ADMIN -> whole college.
+   * Returns null for students/staff (FORBIDDEN by the RPC) — callers treat it
+   * as "no server stats available", the client summary stays authoritative.
+   */
+  async getAdminStats(): Promise<{
+    scope: 'COLLEGE' | 'DEPARTMENT';
+    by_status: Record<string, number>;
+    by_category: Record<string, number>;
+    avg_resolution_minutes: number | null;
+  } | null> {
+    if (isMockModeEnabled()) return null;
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+    try {
+      const { data, error } = await supabase.rpc('admin_stats');
+      if (error) {
+        // Students/staff get FORBIDDEN — expected, not an error state.
+        const be = toBackendError(error);
+        if (be.code === 'FORBIDDEN') return null;
+        throw be;
+      }
+      return (data as any) ?? null;
+    } catch (err) {
+      console.warn('admin_stats unavailable:', err);
+      return null;
+    }
+  },
+
   calculateSummary(issues: Issue[]): AnalyticsSummary {
     const totalIssues = issues.length;
     const openIssues = issues.filter(

@@ -1,4 +1,15 @@
-import { getSupabaseClient, isMockModeEnabled } from '@/lib/supabase';
+import {
+  getSupabaseClient,
+  isMockModeEnabled,
+  requireSupabaseClient,
+  toBackendError,
+} from '@/lib/supabase';
+import {
+  ImageRow,
+  IssueRow,
+  UserRole,
+  mapIssueRowToViewModel,
+} from '@/lib/backendTypes';
 import {
   Issue,
   IssueCategory,
@@ -6,12 +17,25 @@ import {
   IssuePriority,
   IssueStatus,
   TimelineEvent,
-  UserRole,
   CampusLocation,
+  BackendError,
 } from '@/types';
-import { INITIAL_MOCK_ISSUES, MOCK_BUILDINGS } from './mockData';
+import { INITIAL_MOCK_ISSUES } from './mockData';
 
 const ISSUES_STORAGE_KEY = 'campuspulse_issues_store_v1';
+
+/** The exact PostgREST select used for every issue read (row + relations). */
+const ISSUE_SELECT = `
+  *,
+  locations:location_id(id, name, code),
+  departments:department_id(id, name, code),
+  profiles:student_id(id, full_name, role),
+  issue_images(id, storage_path, kind, file_size_bytes, content_type),
+  issue_comments(id, author_id, body, is_internal, created_at, author:author_id(id, full_name, role)),
+  issue_votes(voter_id),
+  issue_status_history(id, old_status, new_status, changed_by, reason, created_at, changer:changed_by(id, full_name, role)),
+  issue_assignments(id, department_id, assigned_to, note, created_at, assignee:assigned_to(id, full_name, phone), assigner:assigned_by(id, full_name, role), department:department_id(name))
+`;
 
 export interface CreateIssueInput {
   title: string;
@@ -43,9 +67,19 @@ export interface AssignIssueInput {
   note?: string;
 }
 
+export interface DepartmentOption { id: string; name: string; code: string; }
+export interface LocationOption { id: string; name: string; code: string; }
+export interface StaffOption { id: string; full_name: string; phone: string | null; }
+
+/** Storage buckets per image kind (0005_storage_triggers.sql). */
+const BUCKET_FOR_KIND: Record<string, string> = {
+  EVIDENCE: 'issue-photos',
+  RESOLUTION_PROOF: 'resolution-proofs',
+};
+
 export const IssuesService = {
   // ------------------------------------------------------------
-  // LOCAL / MOCK FALLBACK ONLY
+  // MOCK MODE ONLY — localStorage persistence. NEVER called in live mode.
   // ------------------------------------------------------------
   getLocalIssues(): Issue[] {
     if (typeof window !== 'undefined') {
@@ -68,193 +102,81 @@ export const IssuesService = {
   },
 
   // ------------------------------------------------------------
-  // REAL BACKEND DATA TRANSFORMATION
+  // INTERNAL: viewer context (auth session) for mappers
   // ------------------------------------------------------------
-  async transformDbIssue(
-    row: any,
-    currentUserId?: string,
-    currentUserRole?: UserRole
-  ): Promise<Issue> {
+  async getViewer(): Promise<{ userId?: string; role?: UserRole }> {
     const supabase = getSupabaseClient();
-
-    // Generate signed URLs for private images
-    const imageUrls: string[] = [];
-    if (supabase && row.issue_images && Array.isArray(row.issue_images)) {
-      for (const img of row.issue_images) {
-        try {
-          const bucket = img.kind === 'RESOLUTION_PROOF' ? 'resolution-proofs' : 'issue-photos';
-          const { data, error } = await supabase.storage.from(bucket).createSignedUrl(img.storage_path, 3600);
-          if (!error && data?.signedUrl) {
-            imageUrls.push(data.signedUrl);
-          }
-        } catch (e) {
-          console.warn('Could not generate signed URL for image:', img.storage_path);
-        }
-      }
-    }
-
-    // Determine privacy: if anonymous and viewer is not owner or staff+, hide reporter details
-    const isOwner = currentUserId && row.student_id === currentUserId;
-    const isStaffOrAdmin = currentUserRole && currentUserRole !== 'STUDENT';
-    const isAnonymous = Boolean(row.is_anonymous);
-    const hideIdentity = isAnonymous && !isOwner && !isStaffOrAdmin;
-
-    const studentName = row.profiles?.full_name || 'Malda Student';
-    const reporter = {
-      id: hideIdentity ? 'anonymous' : row.student_id,
-      name: hideIdentity ? 'Anonymous Student' : studentName,
-      role: (row.profiles?.role as UserRole) || 'STUDENT',
-      studentId: hideIdentity ? undefined : `MC-${row.student_id?.slice(0, 6).toUpperCase()}`,
-      department: row.departments?.name || 'Malda College',
-    };
-
-    // Location mapping
-    const locName = row.locations?.name || 'Main Block';
-    const locCode = row.locations?.code || 'MAIN';
-    const mockBuilding = MOCK_BUILDINGS.find((b) => b.code === locCode) || MOCK_BUILDINGS[0];
-    const location: CampusLocation = {
-      building: locName,
-      buildingCode: locCode,
-      floor: 'Campus Facility',
-      roomOrLandmark: locName,
-      coordinates: { lat: mockBuilding.lat, lng: mockBuilding.lng },
-    };
-
-    // Assigned staff mapping
-    let assignedTo: Issue['assignedTo'] = undefined;
-    if (row.issue_assignments && row.issue_assignments.length > 0) {
-      const latestAssign = row.issue_assignments[row.issue_assignments.length - 1];
-      if (latestAssign.assignee) {
-        assignedTo = {
-          id: latestAssign.assigned_to,
-          name: latestAssign.assignee.full_name,
-          department: latestAssign.department?.name || row.departments?.name || 'Campus Maintenance',
-          phone: latestAssign.assignee.phone || undefined,
-        };
-      }
-    }
-
-    // Build timeline events
-    const timeline: TimelineEvent[] = [
-      {
-        id: `tl-${row.id}-created`,
-        status: 'OPEN',
-        label: 'Issue Logged by Reporter',
-        description: `Lodged at ${locName}${isAnonymous ? ' (Anonymous report)' : ''}.`,
-        timestamp: row.created_at,
-        actor: { name: reporter.name, role: reporter.role },
-      },
-    ];
-
-    if (row.issue_status_history && Array.isArray(row.issue_status_history)) {
-      for (const hist of row.issue_status_history) {
-        timeline.push({
-          id: hist.id || `tl-${hist.created_at}`,
-          status: hist.new_status as IssueStatus,
-          label: `Status: ${hist.new_status.replace('_', ' ')}`,
-          description: hist.reason || `Status transitioned to ${hist.new_status}`,
-          timestamp: hist.created_at,
-          actor: {
-            name: hist.changer?.full_name || 'Campus Duty Staff',
-            role: hist.changer?.role || 'STAFF',
-          },
-        });
-      }
-    }
-
-    // Comments mapping
-    const comments: IssueComment[] = (row.issue_comments || []).map((c: any) => ({
-      id: c.id,
-      issueId: row.id,
-      author: {
-        id: c.author_id,
-        name: c.author?.full_name || 'Campus User',
-        role: (c.author?.role as UserRole) || 'STUDENT',
-      },
-      content: c.body,
-      createdAt: c.created_at,
-      isInternal: c.is_internal,
-    }));
-
-    // Upvotes mapping
-    const upvotedBy: string[] = (row.issue_votes || []).map((v: any) => v.voter_id);
-    const upvotes = upvotedBy.length;
-
-    const ticketYear = new Date(row.created_at).getFullYear();
-    const ticketSeq = row.id.slice(0, 8).toUpperCase();
-    const ticketNumber = `MC-${ticketYear}-${ticketSeq}`;
-
+    if (!supabase) return {};
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return {};
+    // Role is read from the DB profile (authoritative), never user_metadata.
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, role')
+      .eq('id', user.id)
+      .single();
     return {
-      id: row.id,
-      ticketNumber,
-      title: row.title,
-      description: row.description,
-      category: row.category as IssueCategory,
-      priority: row.priority as IssuePriority,
-      status: row.status as IssueStatus,
-      location,
-      locationId: row.location_id,
-      departmentId: row.department_id,
-      department: row.departments?.name || 'Campus Infrastructure',
-      reporter,
-      assignedTo,
-      images: imageUrls,
-      upvotes,
-      upvotedBy,
-      isAnonymous,
-      resolutionSummary: row.resolution_summary,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      resolvedAt: row.resolved_at,
-      timeline,
-      comments,
+      userId: user.id,
+      role: (profile?.role as UserRole) || 'STUDENT',
     };
   },
 
   // ------------------------------------------------------------
+  // INTERNAL: signed URLs for a row's private-bucket images
+  // ------------------------------------------------------------
+  async signedImageUrls(row: IssueRow): Promise<string[]> {
+    const supabase = getSupabaseClient();
+    if (!supabase || !row.issue_images || row.issue_images.length === 0) return [];
+    const urls: string[] = [];
+    for (const img of row.issue_images as ImageRow[]) {
+      try {
+        const bucket = BUCKET_FOR_KIND[img.kind] || 'issue-photos';
+        const { data, error } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(img.storage_path, 3600);
+        if (!error && data?.signedUrl) {
+          urls.push(data.signedUrl);
+        }
+      } catch (e) {
+        console.warn('Could not generate signed URL for image:', img.storage_path);
+      }
+    }
+    return urls;
+  },
+
+  // ------------------------------------------------------------
   // GET ALL ISSUES
+  //   LIVE: supabase only. Empty result = valid empty state. Errors throw
+  //   typed BackendError for the UI ErrorState — NEVER a mock fallback.
   // ------------------------------------------------------------
   async getAllIssues(): Promise<Issue[]> {
     if (isMockModeEnabled()) {
       return this.getLocalIssues();
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      throw new Error('Supabase client not initialized. Cannot fetch live issues.');
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    const userRole = (user?.user_metadata?.role as UserRole) || 'STUDENT';
+    const supabase = requireSupabaseClient();
 
     const { data, error } = await supabase
       .from('issues')
-      .select(`
-        *,
-        locations:location_id(id, name, code),
-        departments:department_id(id, name, code),
-        profiles:student_id(id, full_name, role),
-        issue_images(id, storage_path, kind, file_size_bytes, content_type),
-        issue_comments(id, author_id, body, is_internal, created_at, author:author_id(id, full_name, role)),
-        issue_votes(voter_id),
-        issue_status_history(id, old_status, new_status, changed_by, reason, created_at, changer:changed_by(id, full_name, role)),
-        issue_assignments(id, department_id, assigned_to, note, created_at, assignee:assigned_to(id, full_name, phone), assigner:assigned_by(id, full_name, role), department:department_id(name))
-      `)
+      .select(ISSUE_SELECT)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Supabase query failed for getAllIssues:', error);
-      throw new Error(`Database error: ${error.message} (${error.code || 'UNKNOWN'})`);
+      console.error('getAllIssues failed:', error);
+      throw toBackendError(error, 'ISSUES_FETCH_FAILED');
     }
 
-    const issues = await Promise.all(
-      (data || []).map((row) => this.transformDbIssue(row, user?.id, userRole))
+    const viewer = await this.getViewer();
+    const rows = (data || []) as unknown as IssueRow[];
+    return Promise.all(
+      rows.map(async (row) =>
+        mapIssueRowToViewModel(row, viewer, await this.signedImageUrls(row))
+      )
     );
-    return issues;
   },
 
   // ------------------------------------------------------------
-  // GET ISSUE BY ID
+  // GET ISSUE BY ID (UUID) — ticketNumber lookups resolve through the list
   // ------------------------------------------------------------
   async getIssueById(idOrTicket: string): Promise<Issue | null> {
     if (isMockModeEnabled()) {
@@ -268,57 +190,44 @@ export const IssuesService = {
       );
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      throw new Error('Supabase client not initialized');
-    }
+    const supabase = requireSupabaseClient();
 
-    const { data: { user } } = await supabase.auth.getUser();
-    const userRole = (user?.user_metadata?.role as UserRole) || 'STUDENT';
+    const isUuid =
+      idOrTicket.length === 36 && /^[0-9a-f-]{36}$/i.test(idOrTicket);
 
-    // Query either by exact UUID or by searching
-    let q = supabase
-      .from('issues')
-      .select(`
-        *,
-        locations:location_id(id, name, code),
-        departments:department_id(id, name, code),
-        profiles:student_id(id, full_name, role),
-        issue_images(id, storage_path, kind, file_size_bytes, content_type),
-        issue_comments(id, author_id, body, is_internal, created_at, author:author_id(id, full_name, role)),
-        issue_votes(voter_id),
-        issue_status_history(id, old_status, new_status, changed_by, reason, created_at, changer:changed_by(id, full_name, role)),
-        issue_assignments(id, department_id, assigned_to, note, created_at, assignee:assigned_to(id, full_name, phone), assigner:assigned_by(id, full_name, role), department:department_id(name))
-      `);
-
-    if (idOrTicket.includes('-') && idOrTicket.length === 36) {
-      q = q.eq('id', idOrTicket);
-    } else {
-      // Suffix search or fetch list
+    if (!isUuid) {
+      // Ticket-number / id-prefix search: resolve via the full list
       const issues = await this.getAllIssues();
+      const lower = idOrTicket.toLowerCase();
       return (
         issues.find(
           (iss) =>
             iss.id === idOrTicket ||
-            iss.ticketNumber.toLowerCase() === idOrTicket.toLowerCase() ||
+            iss.ticketNumber.toLowerCase() === lower ||
             iss.id.startsWith(idOrTicket)
         ) || null
       );
     }
 
-    const { data, error } = await q.single();
-    if (error || !data) {
-      if (error && error.code !== 'PGRST116') {
-        throw new Error(`Failed to load issue: ${error.message}`);
-      }
-      return null;
-    }
+    const { data, error } = await supabase
+      .from('issues')
+      .select(ISSUE_SELECT)
+      .eq('id', idOrTicket)
+      .maybeSingle();
 
-    return await this.transformDbIssue(data, user?.id, userRole);
+    if (error) {
+      console.error('getIssueById failed:', error);
+      throw toBackendError(error, 'ISSUE_FETCH_FAILED');
+    }
+    if (!data) return null;
+
+    const row = data as unknown as IssueRow;
+    const viewer = await this.getViewer();
+    return mapIssueRowToViewModel(row, viewer, await this.signedImageUrls(row));
   },
 
   // ------------------------------------------------------------
-  // CREATE ISSUE (Students)
+  // CREATE ISSUE (students) — create_issue RPC + storage + register_issue_image
   // ------------------------------------------------------------
   async createIssue(data: CreateIssueInput): Promise<Issue> {
     if (isMockModeEnabled()) {
@@ -364,31 +273,44 @@ export const IssuesService = {
       return newIssue;
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) throw new Error('Supabase client not initialized');
+    const supabase = requireSupabaseClient();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      throw new Error('Authentication required: please log in to submit a ticket.');
+      throw toBackendError(
+        { message: 'AUTH_REQUIRED: please log in to submit a ticket.' },
+        'AUTH_REQUIRED'
+      );
     }
 
-    // Resolve location UUID
+    // Location must be a DB locations.id — no silent "first location" fallback.
     let locationId = data.locationId;
     if (!locationId) {
       const { data: locations, error: locErr } = await supabase
         .from('locations')
         .select('id, name, code');
       if (locErr || !locations || locations.length === 0) {
-        throw new Error('Could not resolve campus locations from database.');
+        throw toBackendError(
+          { message: 'LOCATIONS_UNAVAILABLE: could not load campus locations from the database.' },
+          'LOCATIONS_UNAVAILABLE'
+        );
       }
       const matched = locations.find(
-        (l) => l.code === data.location.buildingCode || l.name.toLowerCase() === data.location.building.toLowerCase()
+        (l) =>
+          l.code === data.location.buildingCode ||
+          l.name.toLowerCase() === data.location.building.toLowerCase()
       );
-      locationId = matched ? matched.id : locations[0].id;
+      if (!matched) {
+        throw toBackendError(
+          { message: 'INVALID_LOCATION: no campus location matches the selected building. Pick a location from the list.' },
+          'INVALID_LOCATION'
+        );
+      }
+      locationId = matched.id;
     }
 
-    // Call create_issue RPC (students only)
-    const { data: createdIssueRow, error: rpcErr } = await supabase.rpc('create_issue', {
+    // create_issue RPC (students only; DB enforces role + validation)
+    const { data: createdRow, error: rpcErr } = await supabase.rpc('create_issue', {
       p_title: data.title,
       p_description: data.description,
       p_category: data.category,
@@ -400,58 +322,64 @@ export const IssuesService = {
 
     if (rpcErr) {
       console.error('create_issue RPC failed:', rpcErr);
-      throw new Error(`Failed to create issue: ${rpcErr.message}`);
+      throw toBackendError(rpcErr, 'CREATE_ISSUE_FAILED');
     }
 
-    const issueId = createdIssueRow.id;
+    const issueId = (createdRow as { id: string }).id;
 
-    // Handle real image uploads to private bucket 'issue-photos'
+    // Evidence photos: validate client-side, upload to private bucket,
+    // register metadata via RPC. Failures are collected, not silent.
     if (data.imageFiles && data.imageFiles.length > 0) {
       for (const file of data.imageFiles) {
-        try {
-          const cleanName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${file.name.split('.').pop()!.toLowerCase()}`;
-          const storagePath = `${issueId}/${user.id}/${cleanName}`;
+        const validation = validateImageFile(file);
+        if (validation) {
+          console.warn('Skipping invalid evidence file:', validation);
+          continue;
+        }
+        const cleanName = storageFileName(file.name);
+        const storagePath = `${issueId}/${user.id}/${cleanName}`;
 
-          const { error: uploadErr } = await supabase.storage
-            .from('issue-photos')
-            .upload(storagePath, file, {
-              contentType: file.type,
-              upsert: false,
-            });
-
-          if (uploadErr) {
-            console.error('Storage upload failed:', uploadErr);
-            continue;
-          }
-
-          // Register image metadata in database
-          const { error: regErr } = await supabase.rpc('register_issue_image', {
-            p_issue_id: issueId,
-            p_kind: 'EVIDENCE',
-            p_storage_path: storagePath,
-            p_file_size_bytes: file.size,
-            p_content_type: file.type,
+        const { error: uploadErr } = await supabase.storage
+          .from('issue-photos')
+          .upload(storagePath, file, {
+            contentType: file.type,
+            upsert: false,
           });
 
-          if (regErr) {
-            console.error('register_issue_image RPC failed:', regErr);
-          }
-        } catch (imgErr) {
-          console.error('Image attachment failed:', imgErr);
+        if (uploadErr) {
+          console.error('Storage upload failed:', uploadErr);
+          throw toBackendError(uploadErr, 'IMAGE_UPLOAD_FAILED');
+        }
+
+        const { error: regErr } = await supabase.rpc('register_issue_image', {
+          p_issue_id: issueId,
+          p_kind: 'EVIDENCE',
+          p_storage_path: storagePath,
+          p_file_size_bytes: file.size,
+          p_content_type: file.type,
+        });
+
+        if (regErr) {
+          console.error('register_issue_image RPC failed:', regErr);
+          throw toBackendError(regErr, 'IMAGE_REGISTER_FAILED');
         }
       }
     }
 
-    // Fetch and return the fully populated issue
     const fetched = await this.getIssueById(issueId);
     if (!fetched) {
-      throw new Error('Issue created in database, but could not retrieve ticket details.');
+      throw toBackendError(
+        { message: 'Issue created in database, but the ticket could not be reloaded.' },
+        'RELOAD_FAILED'
+      );
     }
     return fetched;
   },
 
   // ------------------------------------------------------------
-  // UPDATE ISSUE STATUS (Staff / Admin RPC)
+  // UPDATE ISSUE STATUS — transition_issue_status RPC
+  //   Errors: INVALID_TRANSITION / FORBIDDEN / RESOLUTION_REASON_REQUIRED /
+  //   REOPEN_WINDOW_EXPIRED / NOT_FOUND — surfaced as typed BackendError.
   // ------------------------------------------------------------
   async updateIssueStatus(
     id: string,
@@ -487,8 +415,7 @@ export const IssuesService = {
       return issue;
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) throw new Error('Supabase client not initialized');
+    const supabase = requireSupabaseClient();
 
     const { error } = await supabase.rpc('transition_issue_status', {
       p_issue_id: id,
@@ -498,14 +425,14 @@ export const IssuesService = {
 
     if (error) {
       console.error('transition_issue_status RPC failed:', error);
-      throw new Error(`Status transition failed: ${error.message}`);
+      throw toBackendError(error, 'TRANSITION_FAILED');
     }
 
     return await this.getIssueById(id);
   },
 
   // ------------------------------------------------------------
-  // ASSIGN ISSUE (Department Admin / Super Admin RPC)
+  // ASSIGN ISSUE — assign_issue RPC (dept admin of target dept / super admin)
   // ------------------------------------------------------------
   async assignIssue(
     id: string,
@@ -537,8 +464,7 @@ export const IssuesService = {
       return issue;
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) throw new Error('Supabase client not initialized');
+    const supabase = requireSupabaseClient();
 
     const { error } = await supabase.rpc('assign_issue', {
       p_issue_id: id,
@@ -549,14 +475,14 @@ export const IssuesService = {
 
     if (error) {
       console.error('assign_issue RPC failed:', error);
-      throw new Error(`Assignment failed: ${error.message}`);
+      throw toBackendError(error, 'ASSIGN_FAILED');
     }
 
     return await this.getIssueById(id);
   },
 
   // ------------------------------------------------------------
-  // ADD COMMENT (Guarded RPC)
+  // ADD COMMENT — add_comment RPC (students never internal; DB enforces)
   // ------------------------------------------------------------
   async addComment(
     issueId: string,
@@ -584,8 +510,7 @@ export const IssuesService = {
       return newComment;
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) throw new Error('Supabase client not initialized');
+    const supabase = requireSupabaseClient();
 
     const { data, error } = await supabase.rpc('add_comment', {
       p_issue_id: issueId,
@@ -595,21 +520,26 @@ export const IssuesService = {
 
     if (error) {
       console.error('add_comment RPC failed:', error);
-      throw new Error(`Failed to post comment: ${error.message}`);
+      throw toBackendError(error, 'COMMENT_FAILED');
     }
 
+    const row = data as { id: string; created_at: string };
     return {
-      id: data.id,
+      id: row.id,
       issueId,
       author,
       content,
-      createdAt: data.created_at || new Date().toISOString(),
+      createdAt: row.created_at || new Date().toISOString(),
       isInternal,
     };
   },
 
   // ------------------------------------------------------------
-  // TOGGLE / CAST UPVOTE (Students RPC)
+  // CAST VOTE — cast_vote RPC.
+  //   DB semantics: ONE vote per student per issue, idempotent, NO un-vote.
+  //   The UI adapts: an already-voted user sees "Endorsed" (disabled-style),
+  //   and repeat calls are safe (server returns the same count).
+  //   Students cannot vote on their own or anonymous issues (DB enforces).
   // ------------------------------------------------------------
   async toggleUpvote(issueId: string, userId: string): Promise<{ upvotes: number; userUpvoted: boolean }> {
     if (isMockModeEnabled()) {
@@ -640,8 +570,7 @@ export const IssuesService = {
       return { upvotes: newCount, userUpvoted: !alreadyUpvoted };
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) throw new Error('Supabase client not initialized');
+    const supabase = requireSupabaseClient();
 
     const { data: newCount, error } = await supabase.rpc('cast_vote', {
       p_issue_id: issueId,
@@ -649,27 +578,37 @@ export const IssuesService = {
 
     if (error) {
       console.error('cast_vote RPC failed:', error);
-      throw new Error(`Vote failed: ${error.message}`);
+      throw toBackendError(error, 'VOTE_FAILED');
     }
 
     return { upvotes: Number(newCount), userUpvoted: true };
   },
 
   // ------------------------------------------------------------
-  // UPLOAD RESOLUTION PROOF (Staff / Admins)
+  // UPLOAD RESOLUTION PROOF (Staff / Admins) — 'resolution-proofs' bucket
+  //   Client-side validation BEFORE upload; register kind RESOLUTION_PROOF.
   // ------------------------------------------------------------
   async uploadResolutionProof(issueId: string, file: File): Promise<string> {
     if (isMockModeEnabled()) {
       return URL.createObjectURL(file);
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) throw new Error('Supabase client not initialized');
+    const supabase = requireSupabaseClient();
+
+    const validation = validateImageFile(file);
+    if (validation) {
+      throw toBackendError({ message: validation }, 'INVALID_FILE');
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Authentication required to upload resolution proof');
+    if (!user) {
+      throw toBackendError(
+        { message: 'AUTH_REQUIRED: sign in to upload a resolution proof.' },
+        'AUTH_REQUIRED'
+      );
+    }
 
-    const cleanName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${file.name.split('.').pop()!.toLowerCase()}`;
+    const cleanName = storageFileName(file.name);
     const storagePath = `${issueId}/${user.id}/${cleanName}`;
 
     const { error: upErr } = await supabase.storage
@@ -679,7 +618,7 @@ export const IssuesService = {
         upsert: false,
       });
 
-    if (upErr) throw new Error(`Proof upload failed: ${upErr.message}`);
+    if (upErr) throw toBackendError(upErr, 'PROOF_UPLOAD_FAILED');
 
     const { error: regErr } = await supabase.rpc('register_issue_image', {
       p_issue_id: issueId,
@@ -689,16 +628,21 @@ export const IssuesService = {
       p_content_type: file.type,
     });
 
-    if (regErr) throw new Error(`Proof registration failed: ${regErr.message}`);
+    if (regErr) throw toBackendError(regErr, 'PROOF_REGISTER_FAILED');
 
-    const { data } = await supabase.storage.from('resolution-proofs').createSignedUrl(storagePath, 3600);
-    return data?.signedUrl || '';
+    const { data, error: signErr } = await supabase.storage
+      .from('resolution-proofs')
+      .createSignedUrl(storagePath, 3600);
+    if (signErr || !data?.signedUrl) {
+      throw toBackendError(signErr || { message: 'Could not sign proof URL.' }, 'SIGN_URL_FAILED');
+    }
+    return data.signedUrl;
   },
 
   // ------------------------------------------------------------
-  // LIST LOCATIONS & DEPARTMENTS FROM DATABASE
+  // REFERENCE DATA — departments / locations / staff from the DB
   // ------------------------------------------------------------
-  async getDepartments(): Promise<{ id: string; name: string; code: string }[]> {
+  async getDepartments(): Promise<DepartmentOption[]> {
     if (isMockModeEnabled()) {
       return [
         { id: 'dept-cse', name: 'Computer Science', code: 'CSE' },
@@ -707,40 +651,44 @@ export const IssuesService = {
       ];
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) return [];
-    const { data, error } = await supabase.from('departments').select('id, name, code').order('name');
+    const supabase = requireSupabaseClient();
+    const { data, error } = await supabase
+      .from('departments')
+      .select('id, name, code')
+      .order('name');
     if (error) {
-      console.warn('Failed to fetch departments:', error);
-      return [];
+      console.error('getDepartments failed:', error);
+      throw toBackendError(error, 'DEPARTMENTS_FETCH_FAILED');
     }
-    return data || [];
+    return (data || []) as DepartmentOption[];
   },
 
-  async getLocations(): Promise<{ id: string; name: string; code: string }[]> {
+  async getLocations(): Promise<LocationOption[]> {
     if (isMockModeEnabled()) {
+      const { MOCK_BUILDINGS } = await import('./mockData');
       return MOCK_BUILDINGS.map((b) => ({ id: b.id, name: b.name, code: b.code }));
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) return [];
-    const { data, error } = await supabase.from('locations').select('id, name, code').order('name');
+    const supabase = requireSupabaseClient();
+    const { data, error } = await supabase
+      .from('locations')
+      .select('id, name, code')
+      .order('name');
     if (error) {
-      console.warn('Failed to fetch locations:', error);
-      return [];
+      console.error('getLocations failed:', error);
+      throw toBackendError(error, 'LOCATIONS_FETCH_FAILED');
     }
-    return data || [];
+    return (data || []) as LocationOption[];
   },
 
-  async getStaffByDepartment(departmentId: string): Promise<{ id: string; full_name: string; phone: string | null }[]> {
+  async getStaffByDepartment(departmentId: string): Promise<StaffOption[]> {
     if (isMockModeEnabled()) {
       return [
         { id: 'usr-staff-01', full_name: 'Subhashish Roy', phone: '+91 94340 77189' },
       ];
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) return [];
+    const supabase = requireSupabaseClient();
     const { data, error } = await supabase
       .from('profiles')
       .select('id, full_name, phone')
@@ -749,10 +697,10 @@ export const IssuesService = {
       .eq('is_active', true);
 
     if (error) {
-      console.warn('Failed to fetch department staff:', error);
-      return [];
+      console.error('getStaffByDepartment failed:', error);
+      throw toBackendError(error, 'STAFF_FETCH_FAILED');
     }
-    return data || [];
+    return (data || []) as StaffOption[];
   },
 
   resetToInitialMock(): void {
@@ -764,3 +712,27 @@ export const IssuesService = {
   },
 };
 
+// ------------------------------------------------------------
+// Client-side image validation (mirrors register_issue_image rules)
+// ------------------------------------------------------------
+
+const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+
+/** Returns an error message for invalid files, or null when valid. */
+export function validateImageFile(file: File): string | null {
+  if (!ALLOWED_MIME.includes(file.type)) {
+    return 'Invalid format: only JPEG, PNG, or WebP images are permitted.';
+  }
+  if (file.size <= 0 || file.size > MAX_SIZE) {
+    return 'File too large: images must be under 5 MB.';
+  }
+  return null;
+}
+
+/** Deterministic, path-safe storage filename (jpg/jpeg/png/webp extension). */
+export function storageFileName(originalName: string): string {
+  const ext = (originalName.split('.').pop() || 'jpg').toLowerCase();
+  const safeExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg';
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
+}
