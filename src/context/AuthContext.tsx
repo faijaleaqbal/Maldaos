@@ -3,63 +3,79 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, UserRole } from '@/types';
 import { AuthService } from '@/services/auth.service';
-import { MOCK_USERS } from '@/services/mockData';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 interface AuthContextType {
-  user: User;
+  /** Always null when Supabase is not configured (fail-closed). */
+  user: User | null;
   role: UserRole;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  switchRole: (role: UserRole) => void;
-  login: (email: string, rolePreference?: UserRole) => Promise<{ success: boolean; error?: string }>;
+  /** True if Supabase env is configured. UI should branch on this. */
+  supabaseConfigured: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  mockUsers: typeof MOCK_USERS;
+  /** Re-resolve role from DB. Use on /admin entry. */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User>(MOCK_USERS.student);
+  const [user, setUser] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [supabaseConfigured, setSupabaseConfigured] = useState(false);
 
   useEffect(() => {
-    const current = AuthService.getCurrentUser();
-    setUser(current);
+    setSupabaseConfigured(isSupabaseConfigured());
+    const cached = AuthService.getCurrentUser();
+    setUser(cached);
     setMounted(true);
   }, []);
 
-  const switchRole = (newRole: UserRole) => {
-    const updated = AuthService.switchRole(newRole);
-    setUser(updated);
-  };
-
-  const login = async (email: string, rolePreference?: UserRole) => {
-    const res = await AuthService.login(email, rolePreference);
+  const login = async (email: string, password: string) => {
+    const res = await AuthService.login(email, password);
     if (res.user) {
       setUser(res.user);
-      return { success: true };
+      return { success: true as const };
     }
-    return { success: false, error: res.error || 'Login failed' };
+    return { success: false as const, error: res.error ?? 'Login failed' };
+  };
+
+  const signUp = async (email: string, password: string, fullName: string) => {
+    const res = await AuthService.signUp(email, password, fullName);
+    if (res.user) {
+      setUser(res.user);
+      return { success: true as const };
+    }
+    return { success: false as const, error: res.error ?? 'Sign-up failed' };
   };
 
   const logout = async () => {
     await AuthService.logout();
-    setUser(MOCK_USERS.student);
+    setUser(null);
   };
 
-  const isAdmin = user.role === 'STAFF' || user.role === 'DEPARTMENT_ADMIN' || user.role === 'SUPER_ADMIN';
+  const refresh = async () => {
+    const u = await AuthService.refreshCurrentUser();
+    if (u) setUser(u);
+  };
+
+  const isAdmin = !!user && (user.role === 'STAFF' || user.role === 'DEPARTMENT_ADMIN' || user.role === 'SUPER_ADMIN');
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        role: user.role,
-        isAuthenticated: mounted,
+        role: user?.role ?? 'STUDENT',
+        isAuthenticated: mounted && !!user,
         isAdmin,
-        switchRole,
+        supabaseConfigured,
         login,
+        signUp,
         logout,
-        mockUsers: MOCK_USERS,
+        refresh,
       }}
     >
       {children}

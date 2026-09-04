@@ -1,21 +1,53 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { CampusLocation } from '@/types';
-import { MOCK_BUILDINGS } from '@/services/mockData';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { CampusMap } from '@/components/map/CampusMap';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin } from 'lucide-react';
+import { LocationsService, type DbLocation } from '@/services/locations.service';
 
 interface LocationPickerProps {
   location: CampusLocation;
   onChange: (location: CampusLocation) => void;
 }
 
+const FALLBACK_CENTER = LocationsService.campusCenter();
+
 export const LocationPicker: React.FC<LocationPickerProps> = ({ location, onChange }) => {
-  const buildingOptions = MOCK_BUILDINGS.map((b) => ({
-    label: `${b.name} (${b.departments.slice(0, 2).join(', ')})`,
+  const [locations, setLocations] = useState<DbLocation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const list = await LocationsService.listLocations();
+      if (!cancelled) {
+        setLocations(list);
+        setLoading(false);
+        // If the current location has no DB match, snap to the first
+        // known location so the form starts from real data.
+        if (list.length > 0 && !list.find((l) => l.code === location.buildingCode)) {
+          const first = list[0];
+          onChange({
+            ...location,
+            building: first.name,
+            buildingCode: first.code,
+            coordinates: {
+              lat: first.latitude ?? FALLBACK_CENTER.lat,
+              lng: first.longitude ?? FALLBACK_CENTER.lng,
+            },
+          });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const buildingOptions = locations.map((b) => ({
+    label: b.name,
     value: b.code,
   }));
 
@@ -29,12 +61,16 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ location, onChan
   ];
 
   const handleBuildingChange = (code: string) => {
-    const selected = MOCK_BUILDINGS.find((b) => b.code === code) || MOCK_BUILDINGS[0];
+    const selected = locations.find((l) => l.code === code) ?? locations[0];
+    if (!selected) return;
     onChange({
       ...location,
       building: selected.name,
       buildingCode: selected.code,
-      coordinates: { lat: selected.lat, lng: selected.lng },
+      coordinates: {
+        lat: selected.latitude ?? FALLBACK_CENTER.lat,
+        lng: selected.longitude ?? FALLBACK_CENTER.lng,
+      },
     });
   };
 
@@ -49,16 +85,22 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ location, onChan
 
   return (
     <div className="space-y-4">
+      {loading ? (
+        <div className="text-xs text-ink-muted">Loading campus locations…</div>
+      ) : locations.length === 0 ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          No campus locations are configured. Add locations to the <code>public.locations</code> table with latitude/longitude.
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Building Select */}
         <Select
           label="College Building / Facility *"
           options={buildingOptions}
           value={location.buildingCode}
           onChange={(e) => handleBuildingChange(e.target.value)}
+          disabled={locations.length === 0}
         />
-
-        {/* Floor Select */}
         <Select
           label="Floor / Level *"
           options={floorOptions}
@@ -67,7 +109,6 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ location, onChan
         />
       </div>
 
-      {/* Room or Landmark */}
       <Input
         label="Room Number / Landmark Description *"
         placeholder="e.g. Room 204, Chemistry Lab 3 fume hood, East Stairwell..."
@@ -77,7 +118,6 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ location, onChan
         helperText="Be as specific as possible so maintenance crews can locate the problem quickly."
       />
 
-      {/* Interactive Map Visualizer */}
       <div className="space-y-1.5 pt-2">
         <label className="block text-xs font-semibold text-ink uppercase tracking-wider flex items-center justify-between">
           <span>Campus Geographic Coordinates</span>

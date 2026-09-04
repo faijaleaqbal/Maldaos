@@ -4,49 +4,39 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { UserRole } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { ShieldCheck, GraduationCap, Wrench, Building2, Shield, ArrowRight } from 'lucide-react';
+import { ShieldCheck, ArrowRight, AlertTriangle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, switchRole, mockUsers } = useAuth();
+  const { login, signUp, supabaseConfigured, user } = useAuth();
 
-  const [email, setEmail] = useState('ananya.sen@malda-student.ac.in');
-  const [rolePreference, setRolePreference] = useState<UserRole>('STUDENT');
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
+  // If already signed in, bounce to dashboard.
+  React.useEffect(() => {
+    if (user) router.push('/dashboard');
+  }, [user, router]);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) return;
     setIsLoading(true);
     setErrorMsg(null);
-    const res = await login(email.trim(), rolePreference);
+    const res = mode === 'signin'
+      ? await login(email.trim(), password)
+      : await signUp(email.trim(), password, fullName.trim() || email.split('@')[0]);
     setIsLoading(false);
-
     if (res.success) {
-      if (rolePreference === 'STUDENT') {
-        router.push('/dashboard');
-      } else {
-        router.push('/admin');
-      }
-    } else {
-      setErrorMsg(res.error || 'Authentication failed');
-    }
-  };
-
-  const handleQuickPersona = (targetRole: UserRole, targetEmail: string) => {
-    setEmail(targetEmail);
-    setRolePreference(targetRole);
-    switchRole(targetRole);
-    if (targetRole === 'STUDENT') {
       router.push('/dashboard');
     } else {
-      router.push('/admin');
+      setErrorMsg(res.error || 'Authentication failed');
     }
   };
 
@@ -62,35 +52,59 @@ export default function LoginPage() {
             Malda College Digital Access
           </span>
           <h1 className="font-serif font-bold text-2xl sm:text-3xl text-ink">
-            Sign in to CampusPulse
+            {mode === 'signin' ? 'Sign in to CampusPulse' : 'Create your CampusPulse account'}
           </h1>
           <p className="text-xs text-ink-muted">
-            Access your campus incident reporting desk or administrative operations console
+            {mode === 'signin'
+              ? 'Access your campus incident reporting desk or administrative operations console'
+              : 'Register with your institutional email; new accounts start as STUDENT'}
           </p>
         </div>
 
-        {/* Login Form */}
+        {/* Configuration Gate */}
+        {!supabaseConfigured && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <strong className="block font-semibold mb-1">Configuration required</strong>
+              <p>
+                Supabase is not configured. Set <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
+                <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in your environment, then reload.
+                The application cannot serve live data without these.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Login / Signup Form */}
         <div className="rounded-xl border border-warm-300 bg-white p-6 shadow-card space-y-5">
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === 'signup' && (
+              <Input
+                label="Full Name *"
+                type="text"
+                placeholder="e.g. Ananya Sen"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            )}
             <Input
-              label="Institutional Email Address *"
+              label="Institutional Email *"
               type="email"
               placeholder="e.g. yourname@malda-student.ac.in"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-
-            <Select
-              label="Role Access Mode *"
-              value={rolePreference}
-              onChange={(e) => setRolePreference(e.target.value as UserRole)}
-              options={[
-                { label: 'Student Persona', value: 'STUDENT' },
-                { label: 'Maintenance Staff / Technician', value: 'STAFF' },
-                { label: 'Department Infrastructure Admin', value: 'DEPARTMENT_ADMIN' },
-                { label: 'Super Admin (Principal / Dean)', value: 'SUPER_ADMIN' },
-              ]}
+            <Input
+              label="Password *"
+              type="password"
+              placeholder={mode === 'signup' ? 'Choose a strong password' : 'Your account password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
             />
 
             {errorMsg && <p className="text-xs text-rose-600 font-medium">{errorMsg}</p>}
@@ -100,50 +114,43 @@ export default function LoginPage() {
               variant="primary"
               className="w-full"
               isLoading={isLoading}
+              disabled={!supabaseConfigured}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
-              Sign In to Malda College Node
+              {mode === 'signin' ? 'Sign In' : 'Create Account'}
             </Button>
           </form>
 
-          {/* 1-Click Evaluation Persona Switchers */}
-          <div className="pt-4 border-t border-warm-200">
-            <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider block mb-2 text-center">
-              Quick 1-Click Persona Sign-In (For Evaluators)
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickPersona('STUDENT', mockUsers.student.email)}
-                className="p-2 rounded border border-warm-300 hover:border-maroon-700 hover:bg-warm-50 text-left text-xs transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-1 font-semibold text-ink">
-                  <GraduationCap className="w-3.5 h-3.5 text-maroon-700" />
-                  <span>Student</span>
-                </div>
-                <span className="text-[10px] text-ink-muted block truncate">{mockUsers.student.name}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickPersona('SUPER_ADMIN', mockUsers.superAdmin.email)}
-                className="p-2 rounded border border-warm-300 hover:border-maroon-700 hover:bg-warm-50 text-left text-xs transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-1 font-semibold text-ink">
-                  <Shield className="w-3.5 h-3.5 text-maroon-700" />
-                  <span>Admin Console</span>
-                </div>
-                <span className="text-[10px] text-ink-muted block truncate">Principal Office</span>
-              </button>
-            </div>
+          <div className="pt-2 border-t border-warm-200 text-center text-xs text-ink-muted">
+            {mode === 'signin' ? (
+              <>
+                New student?{' '}
+                <button
+                  type="button"
+                  className="font-semibold text-maroon-800 hover:underline"
+                  onClick={() => { setMode('signup'); setErrorMsg(null); }}
+                >
+                  Register
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  className="font-semibold text-maroon-800 hover:underline"
+                  onClick={() => { setMode('signin'); setErrorMsg(null); }}
+                >
+                  Sign in
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="text-center text-xs text-ink-muted">
-          Don't have an active registration yet?{' '}
-          <Link href="/register" className="font-semibold text-maroon-800 hover:underline">
-            Register Student / Staff ID
-          </Link>
+        <div className="text-center text-[11px] text-ink-muted flex items-center justify-center gap-1">
+          <ShieldCheck className="w-3 h-3" />
+          <span>Authentication is enforced server-side. Roles resolve from <code className="font-mono">public.profiles</code>.</span>
         </div>
       </div>
     </div>

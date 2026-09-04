@@ -32,7 +32,9 @@ export default function IssuesListPage() {
 
   // Filtering
   const filteredIssues = issues.filter((issue) => {
-    if (scope === 'MY' && issue.reporter.id !== user.id && issue.reporter.name !== user.name) {
+    if (scope === 'MY' && user) {
+      if (issue.reporter.id !== user.id && issue.reporter.email !== user.email) return false;
+    } else if (scope === 'MY' && !user) {
       return false;
     }
 

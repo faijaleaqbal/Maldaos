@@ -18,7 +18,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, compact = false }) 
   const { toggleUpvote } = useIssues();
   const { user } = useAuth();
 
-  const isUpvoted = (issue.upvotedBy || []).includes(user.id);
+  const isUpvoted = user ? (issue.upvotedBy || []).includes(user.id) : false;
 
   const handleUpvote = (e: React.MouseEvent) => {
     e.preventDefault();

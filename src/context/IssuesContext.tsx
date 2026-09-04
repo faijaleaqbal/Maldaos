@@ -4,7 +4,6 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { AnalyticsSummary, Issue, IssueCategory, IssuePriority, IssueStatus, TimelineEvent } from '@/types';
 import { IssuesService } from '@/services/issues.service';
 import { AnalyticsService } from '@/services/analytics.service';
-import { NotificationService } from '@/services/notifications.service';
 import { useAuth } from './AuthContext';
 
 interface IssuesContextType {
@@ -61,15 +60,9 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   ): Promise<Issue> => {
     const created = await IssuesService.createIssue(data);
     setIssues((prev) => [created, ...prev]);
-
-    NotificationService.addNotification({
-      title: 'New Issue Registered',
-      message: `Ticket ${created.ticketNumber} lodged for ${created.location.building}. AI triage initiated.`,
-      ticketNumber: created.ticketNumber,
-      ticketId: created.id,
-      type: 'STATUS_CHANGE',
-    });
-
+    // Note: per-action user-facing notifications are now produced by
+    // the backend (DB triggers + notifications.service.ts). The
+    // client no longer fabricates local notifications.
     return created;
   };
 
@@ -78,18 +71,10 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     newStatus: IssueStatus,
     note?: string
   ): Promise<Issue | null> => {
-    const actor = { name: user.name, role: user.role };
+    const actor = user ? { name: user.name, role: user.role } : { name: 'System', role: 'STAFF' as const };
     const updated = await IssuesService.updateIssueStatus(id, newStatus, actor, note);
     if (updated) {
       setIssues((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-
-      NotificationService.addNotification({
-        title: `Ticket ${updated.ticketNumber} Updated`,
-        message: `Status transitioned to ${newStatus.replace('_', ' ')} by ${user.name}.`,
-        ticketNumber: updated.ticketNumber,
-        ticketId: updated.id,
-        type: newStatus === 'RESOLVED' ? 'RESOLVED' : 'STATUS_CHANGE',
-      });
     }
     return updated;
   };
@@ -98,23 +83,16 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     id: string,
     staff: { id: string; name: string; department: string; phone?: string }
   ): Promise<Issue | null> => {
-    const actor = { name: user.name, role: user.role };
+    const actor = user ? { name: user.name, role: user.role } : { name: 'System', role: 'STAFF' as const };
     const updated = await IssuesService.assignIssue(id, staff, actor);
     if (updated) {
       setIssues((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-
-      NotificationService.addNotification({
-        title: `Work Order Dispatched: ${updated.ticketNumber}`,
-        message: `Assigned to ${staff.name} (${staff.department}).`,
-        ticketNumber: updated.ticketNumber,
-        ticketId: updated.id,
-        type: 'ASSIGNED',
-      });
     }
     return updated;
   };
 
   const addComment = async (issueId: string, content: string): Promise<void> => {
+    if (!user) return;
     const comment = await IssuesService.addComment(issueId, content, {
       id: user.id,
       name: user.name,
@@ -137,13 +115,15 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const toggleUpvote = async (issueId: string): Promise<void> => {
+    if (!user) return;
     const { upvotes, userUpvoted } = await IssuesService.toggleUpvote(issueId, user.id);
+    const uid = user.id;
     setIssues((prev) =>
       prev.map((iss) => {
         if (iss.id === issueId || iss.ticketNumber === issueId) {
           const upvotedBy = userUpvoted
-            ? [...(iss.upvotedBy || []), user.id]
-            : (iss.upvotedBy || []).filter((uid) => uid !== user.id);
+            ? [...(iss.upvotedBy || []), uid]
+            : (iss.upvotedBy || []).filter((id) => id !== uid);
           return { ...iss, upvotes, upvotedBy };
         }
         return iss;

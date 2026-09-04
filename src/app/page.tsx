@@ -21,14 +21,13 @@ import {
   MapPin,
   Activity,
   ChevronRight,
-  GraduationCap,
-  Building2,
+  User,
 } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
   const { issues, summary } = useIssues();
-  const { user, role, switchRole } = useAuth();
+  const { user, role } = useAuth();
   const [searchTicket, setSearchTicket] = useState('');
 
   const handleTicketSearch = (e: React.FormEvent) => {
@@ -178,39 +177,32 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Role Switching Shortcut for Judges */}
-                <div className="pt-2 border-t border-warm-200">
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="text-ink-muted font-medium">Evaluate Experience As:</span>
-                    <span className="text-maroon-800 font-semibold">{user.name} ({role})</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => switchRole('STUDENT')}
-                      className={`p-2 rounded border text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-                        role === 'STUDENT'
-                          ? 'bg-maroon-700 text-white border-maroon-800'
-                          : 'bg-warm-100 hover:bg-warm-200 border-warm-300 text-ink'
-                      }`}
+                {/* Sign-in / persona call-to-action */}
+                {user ? (
+                  <div className="pt-2 border-t border-warm-200">
+                    <div className="flex items-center justify-between text-xs mb-2">
+                      <span className="text-ink-muted font-medium">Signed in as:</span>
+                      <span className="text-maroon-800 font-semibold">{user.name} ({role})</span>
+                    </div>
+                    <Link
+                      href="/profile"
+                      className="w-full p-2 rounded border text-xs font-medium transition-colors flex items-center justify-center gap-1.5 bg-warm-100 hover:bg-warm-200 border-warm-300 text-ink"
                     >
-                      <GraduationCap className="w-3.5 h-3.5" />
-                      <span>Student View</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => switchRole('SUPER_ADMIN')}
-                      className={`p-2 rounded border text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-                        role === 'SUPER_ADMIN'
-                          ? 'bg-maroon-700 text-white border-maroon-800'
-                          : 'bg-warm-100 hover:bg-warm-200 border-warm-300 text-ink'
-                      }`}
-                    >
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>Admin Console</span>
-                    </button>
+                      <User className="w-3.5 h-3.5" />
+                      <span>View Profile / Sign Out</span>
+                    </Link>
                   </div>
-                </div>
+                ) : (
+                  <div className="pt-2 border-t border-warm-200">
+                    <Link
+                      href="/login"
+                      className="w-full p-2 rounded border text-xs font-medium transition-colors flex items-center justify-center gap-1.5 bg-warm-100 hover:bg-warm-200 border-warm-300 text-ink"
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      <span>Sign in to CampusPulse</span>
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>

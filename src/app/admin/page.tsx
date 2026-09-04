@@ -30,9 +30,14 @@ import {
 export default function AdminDashboardPage() {
   const { issues, summary, loading } = useIssues();
   const { user } = useAuth();
-
   const [activeDrawerIssue, setActiveDrawerIssue] = useState<Issue | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  if (!user) {
+    // The admin layout already redirects non-admins. This is a defensive
+    // null-check for the type system.
+    return null;
+  }
 
   const criticalIssues = issues.filter(
     (i) => i.priority === 'CRITICAL' && i.status !== 'RESOLVED' && i.status !== 'CLOSED'

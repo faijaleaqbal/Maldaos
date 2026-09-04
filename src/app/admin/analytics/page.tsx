@@ -45,25 +45,29 @@ export default function AnalyticsPage() {
         <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
           <span className="text-xs text-ink-muted uppercase font-semibold block mb-1">Total Lifetime Tickets</span>
           <span className="font-mono text-2xl font-bold text-ink">{summary.totalIssues}</span>
-          <span className="text-[11px] text-ink-muted block mt-1">Logged across Malda College</span>
+          <span className="text-[11px] text-ink-muted block mt-1">Computed from the live issues list</span>
         </div>
 
         <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
           <span className="text-xs text-ink-muted uppercase font-semibold block mb-1">Resolution Efficiency</span>
           <span className="font-mono text-2xl font-bold text-emerald-700">{summary.resolutionRate}%</span>
-          <span className="text-[11px] text-emerald-800 block mt-1">+4.2% vs target benchmark</span>
+          <span className="text-[11px] text-ink-muted block mt-1">
+            Resolved + closed / total issues (live)
+          </span>
         </div>
 
         <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
           <span className="text-xs text-ink-muted uppercase font-semibold block mb-1">Mean Time to Resolve (MTTR)</span>
-          <span className="font-mono text-2xl font-bold text-maroon-800">{summary.averageResolutionHours} Hours</span>
+          <span className="font-mono text-2xl font-bold text-maroon-800">
+            {summary.averageResolutionHours > 0 ? `${summary.averageResolutionHours.toFixed(1)} Hours` : '—'}
+          </span>
           <span className="text-[11px] text-ink-muted block mt-1">From lodge to verified closure</span>
         </div>
 
         <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
           <span className="text-xs text-ink-muted uppercase font-semibold block mb-1">Composite Health Index</span>
           <span className="font-mono text-2xl font-bold text-gold-900">{summary.campusHealth.overall} / 100</span>
-          <span className="text-[11px] text-ink-muted block mt-1">14-day trailing stability indicator</span>
+          <span className="text-[11px] text-ink-muted block mt-1">{summary.campusHealth.trailingDays}-day trailing stability indicator</span>
         </div>
       </div>
 

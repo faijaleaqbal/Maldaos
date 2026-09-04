@@ -1,5 +1,4 @@
 import { AnalyticsSummary, CampusHealthScore, Issue } from '@/types';
-import { MOCK_CAMPUS_HEALTH } from './mockData';
 
 export const AnalyticsService = {
   calculateSummary(issues: Issue[]): AnalyticsSummary {
@@ -165,7 +164,8 @@ export const AnalyticsService = {
       recurringFaultIndex,
       statusLabel,
       trailingDays: 14,
-      disclaimer: MOCK_CAMPUS_HEALTH.disclaimer,
+      disclaimer:
+        'Campus Health Score is computed from the live issues list: 14-day trailing maintenance throughput, open severity weights, and recurring fault frequencies. It is a live operational indicator, not a predictive statistical guarantee.',
     };
   },
 };

@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CampusLocation, Issue, IssueCategory, IssuePriority, User } from '@/types';
-import { MOCK_BUILDINGS } from '@/services/mockData';
 import { AIService } from '@/services/ai.service';
+import { LocationsService } from '@/services/locations.service';
 import { useIssues } from '@/context/IssuesContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
@@ -60,7 +60,7 @@ function departmentFor(c: IssueCategory): string {
 export const ReportWorkflow: React.FC = () => {
   const router = useRouter();
   const { createIssue, issues } = useIssues();
-  const { user } = useAuth();
+  const { user, supabaseConfigured } = useAuth();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,15 +74,31 @@ export const ReportWorkflow: React.FC = () => {
   const [isSafetyHazard, setIsSafetyHazard] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [location, setLocation] = useState<CampusLocation>({
-    building: MOCK_BUILDINGS[0].name,
-    buildingCode: MOCK_BUILDINGS[0].code,
+    building: '',
+    buildingCode: '',
     floor: '1st Floor',
     roomOrLandmark: '',
-    coordinates: { lat: MOCK_BUILDINGS[0].lat, lng: MOCK_BUILDINGS[0].lng },
+    coordinates: LocationsService.campusCenter(),
   });
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  if (!user) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-12 text-center space-y-3">
+        <h1 className="font-serif font-bold text-2xl text-ink">Sign in to file a campus report</h1>
+        <p className="text-sm text-ink-muted">
+          {supabaseConfigured
+            ? 'You are not signed in.'
+            : 'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to use CampusPulse.'}
+        </p>
+        <Link href="/login" className="text-maroon-700 font-semibold hover:underline">
+          Sign in →
+        </Link>
+      </div>
+    );
+  }
 
   const validateStep = (currentStep: number): boolean => {
     const errs: Record<string, string> = {};
@@ -135,6 +151,7 @@ export const ReportWorkflow: React.FC = () => {
         reporter: {
           id: user.id,
           name: user.name,
+          email: user.email,
           role: user.role,
           studentId: user.studentId,
           department: user.department,

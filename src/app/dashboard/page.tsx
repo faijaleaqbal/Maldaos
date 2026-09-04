@@ -27,12 +27,31 @@ import {
 
 export default function StudentDashboardPage() {
   const { issues, summary, loading } = useIssues();
-  const { user } = useAuth();
+  const { user, supabaseConfigured } = useAuth();
 
-  // Filter issues reported by current user or student persona
-  const myReports = issues.filter(
-    (i) => i.reporter.id === user.id || i.reporter.name === user.name
-  );
+  // Filter issues reported by current user. If no user (unauthenticated
+  // or Supabase unconfigured), show an empty list and a clear banner.
+  const myReports = user
+    ? issues.filter(
+        (i) => i.reporter.id === user.id || i.reporter.email === user.email,
+      )
+    : [];
+
+  if (!user) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-12 text-center space-y-3">
+        <h1 className="font-serif font-bold text-2xl text-ink">Sign in to view your dashboard</h1>
+        <p className="text-sm text-ink-muted">
+          {supabaseConfigured
+            ? 'You are not signed in.'
+            : 'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to use CampusPulse.'}
+        </p>
+        <Link href="/login" className="text-maroon-700 font-semibold hover:underline">
+          Sign in →
+        </Link>
+      </div>
+    );
+  }
 
   // General campus active issues
   const campusActiveIssues = issues.filter(

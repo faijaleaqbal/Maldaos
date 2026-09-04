@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { NotificationItem } from '@/types';
 import { NotificationService } from '@/services/notifications.service';
-import { Bell, Check, ExternalLink, ShieldAlert, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Bell, ExternalLink, ShieldAlert, Sparkles, CheckCircle2, Inbox } from 'lucide-react';
 
 interface NotificationDropdownProps {
   isOpen: boolean;
@@ -16,18 +16,35 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   onClose,
 }) => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const items = await NotificationService.getNotifications();
+      setNotifications(items);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
-      setNotifications(NotificationService.getNotifications());
+      void refresh();
+      const unsub = NotificationService.subscribe(() => {
+        void refresh();
+      });
+      return () => {
+        try { unsub(); } catch { /* */ }
+      };
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const markAllRead = () => {
-    const updated = NotificationService.markAllAsRead();
-    setNotifications(updated);
+  const markAllRead = async () => {
+    await NotificationService.markAllAsRead();
+    await refresh();
   };
 
   const getIcon = (type: NotificationItem['type']) => {
@@ -64,7 +81,9 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
       {/* Notifications List */}
       <div className="max-h-80 overflow-y-auto divide-y divide-warm-200">
-        {notifications.length > 0 ? (
+        {loading && notifications.length === 0 ? (
+          <div className="p-6 text-center text-xs text-ink-muted">Loading…</div>
+        ) : notifications.length > 0 ? (
           notifications.map((n) => (
             <div
               key={n.id}
@@ -100,7 +119,10 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             </div>
           ))
         ) : (
-          <div className="p-6 text-center text-xs text-ink-muted">No notifications right now.</div>
+          <div className="p-6 text-center text-xs text-ink-muted flex flex-col items-center gap-2">
+            <Inbox className="w-5 h-5 text-ink-muted" />
+            <span>No notifications right now.</span>
+          </div>
         )}
       </div>
 

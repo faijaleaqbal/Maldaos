@@ -5,24 +5,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { RoleSwitcherModal } from './RoleSwitcherModal';
 import { NotificationDropdown } from './NotificationDropdown';
 import {
   Bell,
   PlusCircle,
   ShieldCheck,
   User,
-  Users,
   Compass,
-  FileSpreadsheet,
   Layers,
-  Sparkles,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
-  const { user, role, isAdmin } = useAuth();
-  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const { user, isAdmin, logout } = useAuth();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   const isCurrent = (path: string) => {
@@ -45,14 +40,19 @@ export const Navbar: React.FC = () => {
             <span className="hidden sm:inline text-white/70">
               Campus Operations & Incident Management
             </span>
-            <button
-              type="button"
-              onClick={() => setIsRoleModalOpen(true)}
-              className="bg-gold-500 text-maroon-950 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-gold-400 transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Users className="w-3 h-3" />
-              <span>Persona: {user.name.split(' ')[0]} ({role})</span>
-            </button>
+            {user ? (
+              <span className="bg-gold-500 text-maroon-950 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+                <User className="w-3 h-3" />
+                <span>{user.name.split(' ')[0]} · {user.role}</span>
+              </span>
+            ) : (
+              <Link
+                href="/login"
+                className="bg-gold-500 text-maroon-950 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-gold-400"
+              >
+                Sign in
+              </Link>
+            )}
           </div>
         </div>
 
@@ -162,46 +162,50 @@ export const Navbar: React.FC = () => {
             </Link>
 
             {/* Notifications Trigger */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className="w-9 h-9 rounded-md border border-warm-300 bg-white hover:bg-warm-100 flex items-center justify-center text-ink cursor-pointer relative"
-                title="View Notifications"
-              >
-                <Bell className="w-4 h-4 text-ink-muted" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600 ring-2 ring-white" />
-              </button>
-              <NotificationDropdown
-                isOpen={isNotifOpen}
-                onClose={() => setIsNotifOpen(false)}
-              />
-            </div>
-
-            {/* Profile Link / Avatar */}
-            <Link
-              href="/profile"
-              className="flex items-center gap-2 p-1 rounded-md hover:bg-warm-100 transition-colors"
-              title="Student Profile"
-            >
-              <div className="w-8 h-8 rounded-full bg-maroon-100 border border-maroon-300 flex items-center justify-center text-maroon-900 font-semibold text-xs overflow-hidden">
-                {user.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
-                ) : (
-                  user.name.charAt(0)
-                )}
+            {user && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsNotifOpen(!isNotifOpen)}
+                  className="w-9 h-9 rounded-md border border-warm-300 bg-white hover:bg-warm-100 flex items-center justify-center text-ink cursor-pointer relative"
+                  title="View Notifications"
+                >
+                  <Bell className="w-4 h-4 text-ink-muted" />
+                </button>
+                <NotificationDropdown
+                  isOpen={isNotifOpen}
+                  onClose={() => setIsNotifOpen(false)}
+                />
               </div>
-            </Link>
+            )}
+
+            {/* Profile / Sign-in */}
+            {user ? (
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 p-1 rounded-md hover:bg-warm-100 transition-colors"
+                title="Profile"
+              >
+                <div className="w-8 h-8 rounded-full bg-maroon-100 border border-maroon-300 flex items-center justify-center text-maroon-900 font-semibold text-xs overflow-hidden">
+                  {user.name.charAt(0)}
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); void logout(); }}
+                  className="hidden sm:inline text-[11px] text-ink-muted hover:text-maroon-700"
+                  title="Sign out"
+                >
+                  Sign out
+                </button>
+              </Link>
+            ) : (
+              <Link href="/login">
+                <Button size="sm" variant="primary">Sign in</Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>
-
-      {/* Role Switcher Modal */}
-      <RoleSwitcherModal
-        isOpen={isRoleModalOpen}
-        onClose={() => setIsRoleModalOpen(false)}
-      />
     </>
   );
 };

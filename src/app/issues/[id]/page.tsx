@@ -105,7 +105,18 @@ export default function IssueDetailPage() {
     );
   }
 
-  const isUpvoted = (issue.upvotedBy || []).includes(user.id);
+  const isUpvoted = user && issue ? (issue.upvotedBy || []).includes(user.id) : false;
+
+  if (!user) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-12 text-center space-y-3">
+        <h1 className="font-serif font-bold text-2xl text-ink">Sign in to interact with this ticket</h1>
+        <Link href={`/login?next=/issues/${id}`} className="text-maroon-700 font-semibold hover:underline">
+          Sign in →
+        </Link>
+      </div>
+    );
+  }
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

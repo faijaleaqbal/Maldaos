@@ -6,6 +6,8 @@ export interface User {
   email: string;
   role: UserRole;
   department?: string;
+  departmentId?: string;
+  collegeId?: string;
   studentId?: string;
   staffId?: string;
   phone?: string;
@@ -109,6 +111,7 @@ export interface Issue {
   reporter: {
     id: string;
     name: string;
+    email?: string;
     role: UserRole;
     studentId?: string;
     department?: string;
