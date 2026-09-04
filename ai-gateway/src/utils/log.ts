@@ -1,4 +1,4 @@
-import { AIError } from "../contracts/index.ts";
+import { AIError } from "../contracts/index";
 
 export interface Logger {
   debug(msg: string, meta?: Record<string, unknown>): void;

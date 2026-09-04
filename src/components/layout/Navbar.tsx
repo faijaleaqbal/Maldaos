@@ -24,6 +24,7 @@ export const Navbar: React.FC = () => {
   const { user, role, isAdmin } = useAuth();
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const isCurrent = (path: string) => {
     if (path === '/') return pathname === '/';
@@ -170,11 +171,14 @@ export const Navbar: React.FC = () => {
                 title="View Notifications"
               >
                 <Bell className="w-4 h-4 text-ink-muted" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600 ring-2 ring-white" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600 ring-2 ring-white" />
+                )}
               </button>
               <NotificationDropdown
                 isOpen={isNotifOpen}
                 onClose={() => setIsNotifOpen(false)}
+                onUnreadCountChange={setUnreadCount}
               />
             </div>
 

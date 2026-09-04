@@ -1,6 +1,6 @@
-import type { AIProvider, AIRequest, AIResponse, HealthStatus, ProviderName } from "../contracts/index.ts";
-import { AIError } from "../contracts/index.ts";
-import { withTimeout, type Logger } from "../utils/log.ts";
+import type { AIProvider, AIRequest, AIResponse, HealthStatus, ProviderName } from "../contracts/index";
+import { AIError } from "../contracts/index";
+import { withTimeout, type Logger } from "../utils/log";
 
 export interface OpenAICompatibleConfig {
   name: ProviderName;

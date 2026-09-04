@@ -66,23 +66,33 @@ export const AuthService = {
     }
   },
 
-  /** MOCK MODE ONLY: current persona from localStorage. */
+  /** Current persona (MOCK MODE: localStorage; LIVE MODE: unauthenticated guest). */
   getCurrentUser(): User {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(USER_STORAGE_KEY);
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch (e) {
-          // fallback
+    if (isMockModeEnabled()) {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(USER_STORAGE_KEY);
+        if (stored) {
+          try {
+            return JSON.parse(stored);
+          } catch (e) {
+            // fallback
+          }
         }
       }
+      return MOCK_USERS.student;
     }
-    return MOCK_USERS.student;
+    // LIVE MODE: never read client localStorage to grant identity/roles
+    return {
+      id: '',
+      name: 'Guest Student',
+      email: '',
+      role: 'STUDENT',
+      department: 'Malda College',
+    };
   },
 
   setCurrentUser(user: User): void {
-    if (typeof window !== 'undefined') {
+    if (isMockModeEnabled() && typeof window !== 'undefined') {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
     }
   },

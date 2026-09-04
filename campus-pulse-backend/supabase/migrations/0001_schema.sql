@@ -33,6 +33,8 @@ create table public.locations (
   parent_location_id uuid references public.locations(id) on delete set null,
   name text not null,
   code text not null,
+  latitude double precision,
+  longitude double precision,
   unique (college_id, code)
 );
 

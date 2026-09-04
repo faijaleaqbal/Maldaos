@@ -2,20 +2,25 @@
 
 import React from 'react';
 import { CampusLocation } from '@/types';
-import { MOCK_BUILDINGS } from '@/services/mockData';
+import { LocationOption } from '@/services/issues.service';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { CampusMap } from '@/components/map/CampusMap';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 
 interface LocationPickerProps {
   location: CampusLocation;
+  locations?: LocationOption[];
   onChange: (location: CampusLocation) => void;
 }
 
-export const LocationPicker: React.FC<LocationPickerProps> = ({ location, onChange }) => {
-  const buildingOptions = MOCK_BUILDINGS.map((b) => ({
-    label: `${b.name} (${b.departments.slice(0, 2).join(', ')})`,
+export const LocationPicker: React.FC<LocationPickerProps> = ({
+  location,
+  locations = [],
+  onChange,
+}) => {
+  const buildingOptions = locations.map((b) => ({
+    label: `${b.name} (${b.code})`,
     value: b.code,
   }));
 
@@ -29,13 +34,23 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ location, onChan
   ];
 
   const handleBuildingChange = (code: string) => {
-    const selected = MOCK_BUILDINGS.find((b) => b.code === code) || MOCK_BUILDINGS[0];
-    onChange({
-      ...location,
-      building: selected.name,
-      buildingCode: selected.code,
-      coordinates: { lat: selected.lat, lng: selected.lng },
-    });
+    const selected = locations.find((b) => b.code === code);
+    if (selected) {
+      onChange({
+        ...location,
+        building: selected.name,
+        buildingCode: selected.code,
+        coordinates: {
+          lat: selected.latitude ?? location.coordinates.lat,
+          lng: selected.longitude ?? location.coordinates.lng,
+        },
+      });
+    } else {
+      onChange({
+        ...location,
+        buildingCode: code,
+      });
+    }
   };
 
   const handleMapCoordSelect = (coordsData: Partial<CampusLocation>) => {
@@ -53,7 +68,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ location, onChan
         {/* Building Select */}
         <Select
           label="College Building / Facility *"
-          options={buildingOptions}
+          options={buildingOptions.length > 0 ? buildingOptions : [{ label: 'Loading facilities...', value: '' }]}
           value={location.buildingCode}
           onChange={(e) => handleBuildingChange(e.target.value)}
         />
@@ -88,6 +103,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({ location, onChan
         <CampusMap
           height="240px"
           zoom={17}
+          locations={locations}
           interactiveSelect={true}
           selectedLocation={location}
           onLocationSelect={handleMapCoordSelect}

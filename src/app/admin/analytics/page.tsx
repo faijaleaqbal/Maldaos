@@ -51,7 +51,7 @@ export default function AnalyticsPage() {
         <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
           <span className="text-xs text-ink-muted uppercase font-semibold block mb-1">Resolution Efficiency</span>
           <span className="font-mono text-2xl font-bold text-emerald-700">{summary.resolutionRate}%</span>
-          <span className="text-[11px] text-emerald-800 block mt-1">+4.2% vs target benchmark</span>
+          <span className="text-[11px] text-emerald-800 block mt-1">{summary.resolvedIssues} of {summary.totalIssues} resolved</span>
         </div>
 
         <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
@@ -63,7 +63,7 @@ export default function AnalyticsPage() {
         <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
           <span className="text-xs text-ink-muted uppercase font-semibold block mb-1">Composite Health Index</span>
           <span className="font-mono text-2xl font-bold text-gold-900">{summary.campusHealth.overall} / 100</span>
-          <span className="text-[11px] text-ink-muted block mt-1">14-day trailing stability indicator</span>
+          <span className="text-[11px] text-ink-muted block mt-1">Computed from active workload & velocity</span>
         </div>
       </div>
 

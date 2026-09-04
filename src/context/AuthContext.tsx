@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const current = await AuthService.getSessionUser();
             if (current) setUser(current);
           } else if (event === 'SIGNED_OUT') {
-            setUser(MOCK_USERS.student);
+            setUser(AuthService.getCurrentUser());
           }
         });
 
@@ -105,20 +105,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       await AuthService.logout();
-      setUser(MOCK_USERS.student);
+      setUser(AuthService.getCurrentUser());
     } finally {
       setLoading(false);
     }
   };
 
-  const isAdmin = user.role === 'STAFF' || user.role === 'DEPARTMENT_ADMIN' || user.role === 'SUPER_ADMIN';
+  const isAuthenticated = isMockModeEnabled() ? (mounted && !loading) : Boolean(mounted && !loading && user.id);
+  const isAdmin = Boolean(
+    isAuthenticated &&
+    (user.role === 'STAFF' || user.role === 'DEPARTMENT_ADMIN' || user.role === 'SUPER_ADMIN')
+  );
 
   return (
     <AuthContext.Provider
       value={{
         user,
         role: user.role,
-        isAuthenticated: mounted && !loading,
+        isAuthenticated,
         isAdmin,
         loading,
         switchRole,

@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useIssues } from '@/context/IssuesContext';
 import { CampusMap } from '@/components/map/CampusMap';
-import { MOCK_BUILDINGS } from '@/services/mockData';
 import { AssignmentDrawer } from '@/components/admin/AssignmentDrawer';
 import { Issue } from '@/types';
+import { LocationOption, IssuesService } from '@/services/issues.service';
+import { MALDA_CAMPUS_COORDINATES } from '@/lib/backendTypes';
 import {
   Compass,
   MapPin,
@@ -18,9 +19,24 @@ import {
 
 export default function AdminMapPage() {
   const { issues } = useIssues();
+  const [locations, setLocations] = useState<LocationOption[]>([]);
   const [selectedBuildingCode, setSelectedBuildingCode] = useState<string>('ALL');
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    IssuesService.getLocations()
+      .then((locs) => {
+        if (!cancelled) setLocations(locs);
+      })
+      .catch((err) => {
+        console.error('Failed to load locations for map:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const openDrawer = (iss: Issue) => {
     setSelectedIssue(iss);
@@ -28,8 +44,8 @@ export default function AdminMapPage() {
   };
 
   const buildingCounts: Record<string, { total: number; critical: number }> = {};
-  MOCK_BUILDINGS.forEach((b) => {
-    buildingCounts[b.code] = { total: 0, critical: 0 };
+  locations.forEach((l) => {
+    buildingCounts[l.code] = { total: 0, critical: 0 };
   });
 
   issues.forEach((iss) => {
@@ -63,7 +79,7 @@ export default function AdminMapPage() {
 
         <div className="flex items-center gap-2 text-xs font-mono bg-white px-3 py-1.5 rounded-md border border-warm-300 shadow-sm">
           <span>Malda Coordinates:</span>
-          <strong className="text-maroon-900">25.0088° N, 88.1394° E</strong>
+          <strong className="text-maroon-900">{MALDA_CAMPUS_COORDINATES.lat.toFixed(4)}° N, {MALDA_CAMPUS_COORDINATES.lng.toFixed(4)}° E</strong>
         </div>
       </div>
 
@@ -73,6 +89,7 @@ export default function AdminMapPage() {
         <div className="lg:col-span-8 space-y-4">
           <CampusMap
             issues={issues}
+            locations={locations}
             height="560px"
             zoom={17}
             filterBuilding={selectedBuildingCode}
@@ -98,42 +115,52 @@ export default function AdminMapPage() {
             </div>
 
             <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
-              {MOCK_BUILDINGS.map((bldg) => {
-                const count = buildingCounts[bldg.code]?.total || 0;
-                const critical = buildingCounts[bldg.code]?.critical || 0;
-                const isSelected = selectedBuildingCode === bldg.code;
+              {locations.length === 0 ? (
+                <div className="text-xs text-ink-muted text-center py-6">Loading facilities...</div>
+              ) : (
+                locations.map((loc) => {
+                  const count = buildingCounts[loc.code]?.total || 0;
+                  const critical = buildingCounts[loc.code]?.critical || 0;
+                  const isSelected = selectedBuildingCode === loc.code;
 
-                return (
-                  <div
-                    key={bldg.id}
-                    onClick={() => setSelectedBuildingCode(isSelected ? 'ALL' : bldg.code)}
-                    className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
-                      isSelected
-                        ? 'border-maroon-700 bg-maroon-50/70 ring-1 ring-maroon-700'
-                        : 'border-warm-200 hover:border-maroon-300 hover:bg-warm-50 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-1 mb-1">
-                      <h4 className="font-serif font-semibold text-ink leading-snug">{bldg.name}</h4>
-                      <span className="font-mono font-bold text-maroon-900 bg-warm-100 px-1.5 py-0.5 rounded text-[11px] shrink-0">
-                        {count} reports
-                      </span>
-                    </div>
-
-                    <p className="text-[11px] text-ink-muted line-clamp-1 mb-1.5">{bldg.description}</p>
-
-                    <div className="flex items-center justify-between text-[10px] text-ink-muted pt-1.5 border-t border-warm-200/60">
-                      <span>{bldg.floors} Floors • {bldg.departments.slice(0, 2).join(', ')}</span>
-                      {critical > 0 && (
-                        <span className="font-bold text-rose-700 flex items-center gap-0.5">
-                          <Flame className="w-3 h-3 text-rose-600" />
-                          {critical} Critical Hazard
+                  return (
+                    <div
+                      key={loc.id}
+                      onClick={() => setSelectedBuildingCode(isSelected ? 'ALL' : loc.code)}
+                      className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-maroon-700 bg-maroon-50/70 ring-1 ring-maroon-700'
+                          : 'border-warm-200 hover:border-maroon-300 hover:bg-warm-50 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-1 mb-1">
+                        <h4 className="font-serif font-semibold text-ink leading-snug">{loc.name}</h4>
+                        <span className="font-mono font-bold text-maroon-900 bg-warm-100 px-1.5 py-0.5 rounded text-[11px] shrink-0">
+                          {count} reports
                         </span>
-                      )}
+                      </div>
+
+                      <p className="text-[11px] text-ink-muted line-clamp-1 mb-1.5 font-mono">
+                        Facility Code: {loc.code}
+                      </p>
+
+                      <div className="flex items-center justify-between text-[10px] text-ink-muted pt-1.5 border-t border-warm-200/60">
+                        <span className="font-mono">
+                          {loc.latitude != null && loc.longitude != null
+                            ? `${loc.latitude.toFixed(4)}°N, ${loc.longitude.toFixed(4)}°E`
+                            : 'Coordinates unmapped'}
+                        </span>
+                        {critical > 0 && (
+                          <span className="font-bold text-rose-700 flex items-center gap-0.5">
+                            <Flame className="w-3 h-3 text-rose-600" />
+                            {critical} Critical Hazard
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

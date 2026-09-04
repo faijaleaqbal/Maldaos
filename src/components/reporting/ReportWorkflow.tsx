@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CampusLocation, Issue, IssueCategory, IssuePriority, User } from '@/types';
-import { MOCK_BUILDINGS } from '@/services/mockData';
+import { LocationOption, IssuesService } from '@/services/issues.service';
+import { MALDA_CAMPUS_COORDINATES } from '@/lib/backendTypes';
 import { AIService } from '@/services/ai.service';
 import { useIssues } from '@/context/IssuesContext';
 import { useAuth } from '@/context/AuthContext';
@@ -48,6 +49,7 @@ export const ReportWorkflow: React.FC = () => {
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdIssue, setCreatedIssue] = useState<Issue | null>(null);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -58,12 +60,38 @@ export const ReportWorkflow: React.FC = () => {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [location, setLocation] = useState<CampusLocation>({
-    building: MOCK_BUILDINGS[0].name,
-    buildingCode: MOCK_BUILDINGS[0].code,
+    building: 'Main Block',
+    buildingCode: 'MAIN',
     floor: '1st Floor',
     roomOrLandmark: '',
-    coordinates: { lat: MOCK_BUILDINGS[0].lat, lng: MOCK_BUILDINGS[0].lng },
+    coordinates: { lat: MALDA_CAMPUS_COORDINATES.lat, lng: MALDA_CAMPUS_COORDINATES.lng },
   });
+
+  React.useEffect(() => {
+    let cancelled = false;
+    IssuesService.getLocations()
+      .then((locs) => {
+        if (!cancelled && locs.length > 0) {
+          setLocations(locs);
+          const first = locs[0];
+          setLocation((prev) => ({
+            ...prev,
+            building: first.name,
+            buildingCode: first.code,
+            coordinates: {
+              lat: first.latitude ?? MALDA_CAMPUS_COORDINATES.lat,
+              lng: first.longitude ?? MALDA_CAMPUS_COORDINATES.lng,
+            },
+          }));
+        }
+      })
+      .catch((err) => {
+        console.error('ReportWorkflow: Failed to load locations:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -302,7 +330,7 @@ export const ReportWorkflow: React.FC = () => {
             </p>
           </div>
 
-          <LocationPicker location={location} onChange={setLocation} />
+          <LocationPicker location={location} locations={locations} onChange={setLocation} />
           {errors.location && <p className="text-xs text-rose-600 font-medium">{errors.location}</p>}
 
           <div className="flex items-center justify-between pt-3 border-t border-warm-200">

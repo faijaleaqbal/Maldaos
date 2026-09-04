@@ -240,7 +240,15 @@ export const PRIORITY_ORDER: Record<IssuePriority, number> = {
 
 export interface CollegeRow { id: string; name: string; created_at: string; }
 export interface DepartmentRow { id: string; college_id: string; name: string; code: string; }
-export interface LocationRow { id: string; college_id: string; name: string; code: string; parent_location_id?: string | null; }
+export interface LocationRow {
+  id: string;
+  college_id: string;
+  name: string;
+  code: string;
+  parent_location_id?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
 
 export interface ProfileRow {
   id: string;
@@ -357,20 +365,25 @@ export function deriveTicketNumber(issueId: string, createdAt: string): string {
 }
 
 // ============================================================
-// CAMPUS GEOMETRY (UI-only) — DB locations have no coordinates.
-// Maps DB location codes to static map pins for CampusMap.
+// CAMPUS GEOMETRY — Authentic Malda College Landmark Coordinates
 // ============================================================
 
-export const LOCATION_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  MAIN: { lat: 25.0090, lng: 88.1390 },
-  LIB: { lat: 25.0093, lng: 88.1396 },
-  'HOST-A': { lat: 25.0083, lng: 88.1386 },
-  CAF: { lat: 25.0086, lng: 88.1389 },
-  SPORT: { lat: 25.0079, lng: 88.1382 },
+export const MALDA_CAMPUS_COORDINATES = {
+  lat: 25.0088,
+  lng: 88.1394,
 };
 
-export function coordinatesForLocation(code: string | null | undefined): { lat: number; lng: number } {
-  return (code && LOCATION_COORDINATES[code]) || { lat: 25.0088, lng: 88.1394 };
+export const LOCATION_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  MAIN: { lat: 25.0088, lng: 88.1394 },
+  LIB: { lat: 25.0089, lng: 88.1402 },
+  'HOST-A': { lat: 25.0095, lng: 88.1385 },
+  CAF: { lat: 25.0082, lng: 88.1397 },
+  SPORT: { lat: 25.0078, lng: 88.1408 },
+};
+
+export function coordinatesForLocation(code: string | null | undefined): { lat: number; lng: number } | undefined {
+  if (!code) return undefined;
+  return LOCATION_COORDINATES[code];
 }
 
 // ============================================================
@@ -483,7 +496,10 @@ export function mapLocationRow(
 ): CampusLocation {
   const name = location?.name || fallbackName;
   const code = location?.code || 'MAIN';
-  const coords = coordinatesForLocation(code);
+  const coords =
+    (location?.latitude != null && location?.longitude != null
+      ? { lat: location.latitude, lng: location.longitude }
+      : coordinatesForLocation(code)) || MALDA_CAMPUS_COORDINATES;
   return {
     building: name,
     buildingCode: code,

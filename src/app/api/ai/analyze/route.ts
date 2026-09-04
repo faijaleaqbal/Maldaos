@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AIService } from '@/services/ai.service';
-import { MOCK_BUILDINGS } from '@/services/mockData';
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +17,7 @@ export async function POST(req: NextRequest) {
     const analysis = AIService.generateDeterministicTriage(
       title,
       description,
-      building || MOCK_BUILDINGS[0].name,
+      building || 'Campus Facility',
       []
     );
 

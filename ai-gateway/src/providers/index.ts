@@ -1,5 +1,5 @@
-import { OpenAICompatibleProvider } from "./openai-compatible.ts";
-import type { ProviderName } from "../contracts/index.ts";
+import { OpenAICompatibleProvider } from "./openai-compatible";
+import type { ProviderName } from "../contracts/index";
 
 export class GroqProvider extends OpenAICompatibleProvider {
   declare readonly name: ProviderName;

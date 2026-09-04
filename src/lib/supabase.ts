@@ -14,21 +14,20 @@ export const isSupabaseConfigured = (): boolean => {
 };
 
 export const isMockModeEnabled = (): boolean => {
-  if (typeof window !== 'undefined') {
+  // In production, mock mode is strictly controlled by explicit env var, NEVER by localStorage
+  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
     const forced = localStorage.getItem('campuspulse_force_mock');
     if (forced !== null) {
       return forced === 'true';
     }
   }
-  const envMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA;
-  if (envMock !== undefined) {
-    return envMock === 'true';
-  }
-  return !isSupabaseConfigured();
+  // Mock mode requires explicit opt-in via NEXT_PUBLIC_USE_MOCK_DATA === 'true'.
+  // Production/live mode must NEVER silently activate mock mode because Supabase is unconfigured.
+  return process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
 };
 
 export const setMockMode = (enabled: boolean) => {
-  if (typeof window !== 'undefined') {
+  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
     localStorage.setItem('campuspulse_force_mock', enabled ? 'true' : 'false');
     window.location.reload();
   }

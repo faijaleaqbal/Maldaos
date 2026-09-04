@@ -1,6 +1,6 @@
-import type { AIGateway } from "../gateway.ts";
-import { AIError, type AIRequest, type ProviderName } from "../contracts/index.ts";
-import { categoryEnum, issueAnalysisSchema, priorityEnum, severityEnum, validate, type IssueAnalysis } from "../validation/index.ts";
+import type { AIGateway } from "../gateway";
+import { AIError, type AIRequest, type ProviderName } from "../contracts/index";
+import { categoryEnum, issueAnalysisSchema, priorityEnum, severityEnum, validate, type IssueAnalysis } from "../validation/index";
 
 const RECOMMENDATION_GUARD = `
 You are an assistant for a campus issue reporting system. You NEVER resolve,

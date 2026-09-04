@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { CampusBuilding, CampusLocation, Issue, IssuePriority } from '@/types';
-import { MALDA_COLLEGE_COORDINATES, MOCK_BUILDINGS } from '@/services/mockData';
-import { MapPin, Navigation, Layers, Info, Sparkles } from 'lucide-react';
-import Link from 'next/link';
+import { CampusLocation, Issue } from '@/types';
+import { LocationOption, IssuesService } from '@/services/issues.service';
+import { MALDA_CAMPUS_COORDINATES } from '@/lib/backendTypes';
+import { Navigation } from 'lucide-react';
 
 interface CampusMapProps {
   issues?: Issue[];
+  locations?: LocationOption[];
   selectedLocation?: CampusLocation | null;
   onLocationSelect?: (location: Partial<CampusLocation>) => void;
   interactiveSelect?: boolean;
@@ -19,6 +20,7 @@ interface CampusMapProps {
 
 export const CampusMap: React.FC<CampusMapProps> = ({
   issues = [],
+  locations: initialLocations,
   selectedLocation,
   onLocationSelect,
   interactiveSelect = false,
@@ -32,6 +34,37 @@ export const CampusMap: React.FC<CampusMapProps> = ({
   const markersGroupRef = useRef<any>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [activeBuildingFilter, setActiveBuildingFilter] = useState<string>(filterBuilding || 'ALL');
+  const [locations, setLocations] = useState<LocationOption[]>(initialLocations || []);
+
+  useEffect(() => {
+    if (filterBuilding) {
+      setActiveBuildingFilter(filterBuilding);
+    }
+  }, [filterBuilding]);
+
+  useEffect(() => {
+    if (initialLocations && initialLocations.length > 0) {
+      setLocations(initialLocations);
+      return;
+    }
+    let cancelled = false;
+    IssuesService.getLocations()
+      .then((locs) => {
+        if (!cancelled) setLocations(locs);
+      })
+      .catch((err) => {
+        console.error('CampusMap: Failed to fetch locations:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialLocations]);
+
+  // Keep a ref to locations for the click handler
+  const locationsRef = useRef<LocationOption[]>(locations);
+  useEffect(() => {
+    locationsRef.current = locations;
+  }, [locations]);
 
   useEffect(() => {
     let isMounted = true;
@@ -51,7 +84,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
       });
 
       const map = L.map(mapContainerRef.current, {
-        center: [MALDA_COLLEGE_COORDINATES.lat, MALDA_COLLEGE_COORDINATES.lng],
+        center: [MALDA_CAMPUS_COORDINATES.lat, MALDA_CAMPUS_COORDINATES.lng],
         zoom: zoom,
         zoomControl: true,
         scrollWheelZoom: false,
@@ -75,23 +108,32 @@ export const CampusMap: React.FC<CampusMapProps> = ({
       if (interactiveSelect && onLocationSelect) {
         map.on('click', (e: any) => {
           const { lat, lng } = e.latlng;
-          // Find closest building
-          let closestBuilding = MOCK_BUILDINGS[0];
+          const currentLocs = locationsRef.current;
+
+          let closestLoc: LocationOption | null = null;
           let minDist = Infinity;
 
-          MOCK_BUILDINGS.forEach((b) => {
-            const dist = Math.hypot(b.lat - lat, b.lng - lng);
-            if (dist < minDist) {
-              minDist = dist;
-              closestBuilding = b;
+          currentLocs.forEach((loc) => {
+            if (loc.latitude != null && loc.longitude != null) {
+              const dist = Math.hypot(loc.latitude - lat, loc.longitude - lng);
+              if (dist < minDist) {
+                minDist = dist;
+                closestLoc = loc;
+              }
             }
           });
 
-          onLocationSelect({
-            building: closestBuilding.name,
-            buildingCode: closestBuilding.code,
-            coordinates: { lat, lng },
-          });
+          if (closestLoc) {
+            onLocationSelect({
+              building: (closestLoc as LocationOption).name,
+              buildingCode: (closestLoc as LocationOption).code,
+              coordinates: { lat, lng },
+            });
+          } else {
+            onLocationSelect({
+              coordinates: { lat, lng },
+            });
+          }
         });
       }
 
@@ -111,7 +153,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
     };
   }, [interactiveSelect, onLocationSelect, zoom]);
 
-  // Update markers whenever issues, filters, or selectedLocation changes
+  // Update markers whenever issues, filters, locations or selectedLocation changes
   useEffect(() => {
     if (!mapLoaded || !mapInstanceRef.current || !markersGroupRef.current) return;
 
@@ -120,15 +162,17 @@ export const CampusMap: React.FC<CampusMapProps> = ({
       const markersGroup = markersGroupRef.current;
       markersGroup.clearLayers();
 
-      // 1. Campus Buildings landmark icons
-      MOCK_BUILDINGS.forEach((bldg) => {
-        const isFiltered = activeBuildingFilter !== 'ALL' && activeBuildingFilter !== bldg.code;
+      // 1. Campus Facilities landmark icons (only for facilities with genuine coordinates)
+      locations.forEach((loc) => {
+        if (loc.latitude == null || loc.longitude == null) return;
+
+        const isFiltered = activeBuildingFilter !== 'ALL' && activeBuildingFilter !== loc.code;
         if (isFiltered) return;
 
         const bldgDiv = document.createElement('div');
         bldgDiv.className =
           'bg-maroon-900 text-white font-serif text-[10px] font-semibold px-2 py-1 rounded shadow-md border border-gold-500 whitespace-nowrap cursor-pointer flex items-center gap-1 hover:scale-105 transition-transform';
-        bldgDiv.innerHTML = `<span>🏛️</span><span>${bldg.name.split('(')[0].trim()}</span>`;
+        bldgDiv.innerHTML = `<span>🏛️</span><span>${loc.name.split('(')[0].trim()}</span>`;
 
         const bldgIcon = L.divIcon({
           html: bldgDiv,
@@ -137,22 +181,22 @@ export const CampusMap: React.FC<CampusMapProps> = ({
           iconAnchor: [60, 12],
         });
 
-        const bldgMarker = L.marker([bldg.lat, bldg.lng], { icon: bldgIcon }).addTo(markersGroup);
+        const bldgMarker = L.marker([loc.latitude, loc.longitude], { icon: bldgIcon }).addTo(markersGroup);
 
         bldgMarker.bindPopup(`
           <div class="p-1 max-w-[220px]">
-            <h4 class="font-serif font-semibold text-xs text-maroon-950">${bldg.name}</h4>
-            <p class="text-[11px] text-gray-600 mt-1">${bldg.description}</p>
-            <div class="mt-1 text-[10px] text-maroon-800 font-medium">Departments: ${bldg.departments.slice(0, 3).join(', ')}</div>
+            <h4 class="font-serif font-semibold text-xs text-maroon-950">${loc.name}</h4>
+            <div class="mt-1 text-[10px] text-maroon-800 font-mono">Code: ${loc.code}</div>
+            <div class="text-[10px] text-gray-500 mt-0.5 font-mono">${loc.latitude.toFixed(4)}°N, ${loc.longitude.toFixed(4)}°E</div>
           </div>
         `);
 
         if (interactiveSelect && onLocationSelect) {
           bldgMarker.on('click', () => {
             onLocationSelect({
-              building: bldg.name,
-              buildingCode: bldg.code,
-              coordinates: { lat: bldg.lat, lng: bldg.lng },
+              building: loc.name,
+              buildingCode: loc.code,
+              coordinates: { lat: loc.latitude!, lng: loc.longitude! },
             });
           });
         }
@@ -194,8 +238,8 @@ export const CampusMap: React.FC<CampusMapProps> = ({
           iconAnchor: [12, 12],
         });
 
-        const lat = issue.location.coordinates.lat || MALDA_COLLEGE_COORDINATES.lat;
-        const lng = issue.location.coordinates.lng || MALDA_COLLEGE_COORDINATES.lng;
+        const lat = issue.location.coordinates.lat || MALDA_CAMPUS_COORDINATES.lat;
+        const lng = issue.location.coordinates.lng || MALDA_CAMPUS_COORDINATES.lng;
 
         const marker = L.marker([lat, lng], { icon: issueIcon }).addTo(markersGroup);
 
@@ -242,7 +286,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
     };
 
     renderMarkers();
-  }, [mapLoaded, issues, activeBuildingFilter, selectedLocation, highlightCritical, interactiveSelect, onLocationSelect]);
+  }, [mapLoaded, issues, locations, activeBuildingFilter, selectedLocation, highlightCritical, interactiveSelect, onLocationSelect]);
 
   return (
     <div className="relative rounded-lg overflow-hidden border border-warm-300 bg-warm-100">
@@ -265,41 +309,22 @@ export const CampusMap: React.FC<CampusMapProps> = ({
                 : 'text-ink-muted hover:bg-warm-100'
             }`}
           >
-            All Buildings
+            All Facilities
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveBuildingFilter('VID-BHAVAN')}
-            className={`px-2 py-0.5 rounded font-medium transition-colors ${
-              activeBuildingFilter === 'VID-BHAVAN'
-                ? 'bg-maroon-700 text-white'
-                : 'text-ink-muted hover:bg-warm-100'
-            }`}
-          >
-            Vidyasagar
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveBuildingFilter('CENT-ADM')}
-            className={`px-2 py-0.5 rounded font-medium transition-colors ${
-              activeBuildingFilter === 'CENT-ADM'
-                ? 'bg-maroon-700 text-white'
-                : 'text-ink-muted hover:bg-warm-100'
-            }`}
-          >
-            Centenary
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveBuildingFilter('LIB-CENTRAL')}
-            className={`px-2 py-0.5 rounded font-medium transition-colors ${
-              activeBuildingFilter === 'LIB-CENTRAL'
-                ? 'bg-maroon-700 text-white'
-                : 'text-ink-muted hover:bg-warm-100'
-            }`}
-          >
-            Library
-          </button>
+          {locations.map((loc) => (
+            <button
+              key={loc.id}
+              type="button"
+              onClick={() => setActiveBuildingFilter(loc.code)}
+              className={`px-2 py-0.5 rounded font-medium transition-colors whitespace-nowrap ${
+                activeBuildingFilter === loc.code
+                  ? 'bg-maroon-700 text-white'
+                  : 'text-ink-muted hover:bg-warm-100'
+              }`}
+            >
+              {loc.name.split('(')[0].trim()}
+            </button>
+          ))}
         </div>
       </div>
 

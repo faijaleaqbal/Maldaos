@@ -68,7 +68,13 @@ export interface AssignIssueInput {
 }
 
 export interface DepartmentOption { id: string; name: string; code: string; }
-export interface LocationOption { id: string; name: string; code: string; }
+export interface LocationOption {
+  id: string;
+  name: string;
+  code: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
 export interface StaffOption { id: string; full_name: string; phone: string | null; }
 
 /** Storage buckets per image kind (0005_storage_triggers.sql). */
@@ -666,19 +672,62 @@ export const IssuesService = {
   async getLocations(): Promise<LocationOption[]> {
     if (isMockModeEnabled()) {
       const { MOCK_BUILDINGS } = await import('./mockData');
-      return MOCK_BUILDINGS.map((b) => ({ id: b.id, name: b.name, code: b.code }));
+      return MOCK_BUILDINGS.map((b) => ({
+        id: b.id,
+        name: b.name,
+        code: b.code,
+        latitude: b.lat,
+        longitude: b.lng,
+      }));
     }
 
     const supabase = requireSupabaseClient();
     const { data, error } = await supabase
       .from('locations')
-      .select('id, name, code')
+      .select('id, name, code, latitude, longitude')
       .order('name');
     if (error) {
       console.error('getLocations failed:', error);
       throw toBackendError(error, 'LOCATIONS_FETCH_FAILED');
     }
     return (data || []) as LocationOption[];
+  },
+
+  async getAllStaff(): Promise<Array<{
+    id: string;
+    full_name: string;
+    role: string;
+    phone: string | null;
+    department_id: string | null;
+    department_name?: string;
+  }>> {
+    if (isMockModeEnabled()) {
+      return [
+        { id: 'usr-staff-01', full_name: 'Subhashish Roy', role: 'STAFF', phone: '+91 94340 77189', department_id: 'dept-01', department_name: 'Facilities Operations' },
+        { id: 'usr-staff-02', full_name: 'Biren Mondal', role: 'STAFF', phone: '+91 94342 11982', department_id: 'dept-02', department_name: 'Civil Works' },
+      ];
+    }
+
+    const supabase = requireSupabaseClient();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, role, phone, department_id, departments(name, code)')
+      .in('role', ['STAFF', 'DEPARTMENT_ADMIN'])
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('getAllStaff failed:', error);
+      throw toBackendError(error, 'STAFF_FETCH_FAILED');
+    }
+
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      full_name: row.full_name,
+      role: row.role,
+      phone: row.phone,
+      department_id: row.department_id,
+      department_name: row.departments?.name || 'Assigned Department',
+    }));
   },
 
   async getStaffByDepartment(departmentId: string): Promise<StaffOption[]> {

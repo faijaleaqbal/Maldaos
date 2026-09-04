@@ -1,7 +1,6 @@
 import { getSupabaseClient, isMockModeEnabled, requireSupabaseClient, toBackendError } from '@/lib/supabase';
-import { mapNotificationRow, NotificationRow, IssueRow } from '@/lib/backendTypes';
+import { mapNotificationRow, NotificationRow } from '@/lib/backendTypes';
 import { NotificationItem } from '@/types';
-import { MOCK_NOTIFICATIONS } from './mockData';
 
 const NOTIF_STORAGE_KEY = 'campuspulse_notifications_v1';
 
@@ -52,6 +51,8 @@ export const NotificationService = {
         }
       }
     }
+    // Lazy access mock data only in mock mode
+    const { MOCK_NOTIFICATIONS } = require('./mockData');
     return MOCK_NOTIFICATIONS;
   },
 
