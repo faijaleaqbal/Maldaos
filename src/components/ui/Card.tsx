@@ -10,7 +10,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ children, variant = 'default', hoverable = false, className, ...props }, ref) => {
     const variants = {
-      default: 'bg-surface border-warm-300 text-ink shadow-card',
+      default: 'bg-white border-warm-300 text-ink shadow-subtle',
       warm: 'bg-warm-100 border-warm-300 text-ink',
       subtle: 'bg-warm-50 border-warm-200 text-ink',
       ai: 'bg-ai-surface border-ai-border text-ink shadow-subtle',
@@ -22,9 +22,9 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
         ref={ref}
         className={twMerge(
           clsx(
-            'rounded-lg border p-4 sm:p-5 transition-all duration-150',
+            'rounded-md border p-4 sm:p-5 transition-colors duration-150',
             variants[variant],
-            hoverable && 'hover:border-maroon-300 hover:shadow-card hover:-translate-y-0.5 cursor-pointer',
+            hoverable && 'hover:border-maroon-700 cursor-pointer',
             className
           )
         )}
@@ -35,6 +35,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     );
   }
 );
+
 Card.displayName = 'Card';
 
 export const CardHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({

@@ -56,7 +56,11 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    // Carry any refreshed auth cookies onto the redirect response so a token
+    // refresh performed during this request is not lost mid-redirect (F-1).
+    const redirect = NextResponse.redirect(new URL('/login', request.url));
+    response.cookies.getAll().forEach((c) => redirect.cookies.set(c.name, c.value));
+    return redirect;
   }
 
   const { data: profile } = await supabase

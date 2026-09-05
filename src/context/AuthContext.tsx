@@ -22,7 +22,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User>(MOCK_USERS.student);
+  const [user, setUser] = useState<User>(() =>
+    isMockModeEnabled() ? MOCK_USERS.student : AuthService.getCurrentUser()
+  );
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Issue } from '@/types';
 import { IssueStatusBadge } from './IssueStatusBadge';
 import { PriorityBadge } from './PriorityBadge';
-import { MapPin, ThumbsUp, MessageSquare, Sparkles, ArrowRight } from 'lucide-react';
+import { MapPin, ThumbsUp, MessageSquare, ArrowRight } from 'lucide-react';
 import { useIssues } from '@/context/IssuesContext';
 import { useAuth } from '@/context/AuthContext';
 
@@ -33,14 +33,14 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, compact = false }) 
 
   return (
     <Link href={`/issues/${issue.id}`} className="block group">
-      <div className="rounded-lg border border-warm-300 bg-white p-4 sm:p-5 transition-all duration-150 hover:border-maroon-300 hover:shadow-card">
+      <div className="rounded border border-warm-300 bg-white p-4 transition-colors duration-150 hover:border-maroon-700 shadow-subtle">
         {/* Top Meta Line: Ticket # + Status + Priority */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs font-semibold text-maroon-900 bg-maroon-50 px-2 py-0.5 rounded border border-maroon-200">
               {issue.ticketNumber}
             </span>
-            <span className="text-[11px] text-ink-muted">
+            <span className="text-[11px] text-ink-muted font-medium">
               {issue.category.replace('_', ' ')}
             </span>
           </div>
@@ -48,17 +48,17 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, compact = false }) 
           <div className="flex items-center gap-1.5">
             {issue.aiAnalysis && !issue.aiAnalysis.isFallback && (
               <span
-                title="AI operational triage completed"
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-ai-700 bg-ai-50 border border-ai-border px-1.5 py-0.5 rounded"
+                title="Automated preliminary triage assessed"
+                className="inline-flex items-center gap-1 text-[10px] font-mono text-ink-muted bg-warm-100 border border-warm-200 px-1.5 py-0.5 rounded"
               >
-                <Sparkles className="w-3 h-3 text-ai-500" />
-                <span className="hidden sm:inline">AI Triaged</span>
+                <span>Triaged</span>
               </span>
             )}
             <PriorityBadge priority={issue.priority} />
             <IssueStatusBadge status={issue.status} />
           </div>
         </div>
+
 
         {/* Issue Title */}
         <h4 className="font-serif font-semibold text-sm sm:text-base text-ink group-hover:text-maroon-800 transition-colors line-clamp-2 mb-2">
@@ -89,10 +89,10 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, compact = false }) 
               onClick={handleUpvote}
               aria-label={`Upvote issue ${issue.ticketNumber}. Current upvotes: ${issue.upvotes || 0}`}
               aria-pressed={isUpvoted}
-              className={`min-h-[44px] min-w-[44px] px-2.5 py-1.5 inline-flex items-center justify-center gap-1.5 rounded-md text-xs transition-colors cursor-pointer ${
+              className={`min-h-[44px] min-w-[44px] px-2.5 py-1.5 inline-flex items-center justify-center gap-1.5 rounded-md text-xs transition-all duration-150 cursor-pointer select-none touch-manipulation active:scale-[0.96] border ${
                 isUpvoted
-                  ? 'bg-maroon-50 text-maroon-800 font-semibold border border-maroon-200'
-                  : 'hover:bg-warm-100 text-ink-muted'
+                  ? 'bg-maroon-50 text-maroon-800 font-semibold border-maroon-200 shadow-xs'
+                  : 'bg-transparent hover:bg-warm-100/80 hover:border-warm-300 border-transparent text-ink-muted hover:text-ink'
               }`}
               title="Endorse this campus issue report"
             >

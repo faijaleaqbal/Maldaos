@@ -63,11 +63,11 @@ async function main() {
     .from('locations')
     .upsert(
       [
-        { college_id: collegeId, name: 'Main Block', code: 'MAIN' },
-        { college_id: collegeId, name: 'Library', code: 'LIB' },
-        { college_id: collegeId, name: 'Hostel A', code: 'HOST-A' },
-        { college_id: collegeId, name: 'Cafeteria', code: 'CAF' },
-        { college_id: collegeId, name: 'Sports Ground', code: 'SPORT' },
+        { college_id: collegeId, name: 'Main Block', code: 'MAIN', latitude: 25.0088, longitude: 88.1394 },
+        { college_id: collegeId, name: 'Library', code: 'LIB', latitude: 25.0089, longitude: 88.1402 },
+        { college_id: collegeId, name: 'Hostel A', code: 'HOST-A', latitude: 25.0095, longitude: 88.1385 },
+        { college_id: collegeId, name: 'Cafeteria', code: 'CAF', latitude: 25.0082, longitude: 88.1397 },
+        { college_id: collegeId, name: 'Sports Ground', code: 'SPORT', latitude: 25.0078, longitude: 88.1408 },
       ],
       { onConflict: 'college_id,code' }
     )

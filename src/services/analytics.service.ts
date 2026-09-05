@@ -194,14 +194,14 @@ export const AnalyticsService = {
   ): CampusHealthScore {
     if (totalCount === 0) {
       return {
-        overall: 100,
-        resolutionPerformance: 100,
-        openIssueLoad: 100,
-        criticalSeverityIndex: 100,
-        recurringFaultIndex: 100,
-        statusLabel: 'OPTIMAL',
+        overall: 0,
+        resolutionPerformance: 0,
+        openIssueLoad: 0,
+        criticalSeverityIndex: 0,
+        recurringFaultIndex: 0,
+        statusLabel: 'INSUFFICIENT_DATA',
         trailingDays: 14,
-        disclaimer: 'No incidents currently recorded on campus.',
+        disclaimer: 'Insufficient data: No incident records currently logged in database.',
       };
     }
 

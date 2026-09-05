@@ -130,6 +130,7 @@ export interface Issue {
   };
   department: string;
   images: string[];
+  resolutionProofImages?: string[];
   upvotes: number;
   upvotedBy: string[];
   isAnonymous?: boolean;
@@ -142,13 +143,26 @@ export interface Issue {
   comments: IssueComment[];
 }
 
+export interface AuditLogEntry {
+  id: string;
+  actorId: string | null;
+  actorName?: string;
+  actorRole?: UserRole;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  oldValues: Record<string, any> | null;
+  newValues: Record<string, any> | null;
+  createdAt: string;
+}
+
 export interface CampusHealthScore {
   overall: number;
   resolutionPerformance: number;
   openIssueLoad: number;
   criticalSeverityIndex: number;
   recurringFaultIndex: number;
-  statusLabel: 'OPTIMAL' | 'STABLE' | 'ATTENTION_NEEDED' | 'CRITICAL';
+  statusLabel: 'OPTIMAL' | 'STABLE' | 'ATTENTION_NEEDED' | 'CRITICAL' | 'INSUFFICIENT_DATA';
   trailingDays: number;
   disclaimer: string;
 }

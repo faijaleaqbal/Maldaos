@@ -44,7 +44,7 @@ export default function RegisterPage() {
             MC
           </div>
           <h1 className="font-serif font-bold text-2xl sm:text-3xl text-ink">
-            Register for CampusPulse
+            Register for MaldaOS
           </h1>
           <p className="text-xs text-ink-muted">
             Malda College Institutional Registration for Students and Staff

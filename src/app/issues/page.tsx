@@ -6,8 +6,17 @@ import { useIssues } from '@/context/IssuesContext';
 import { useAuth } from '@/context/AuthContext';
 import { Issue, IssueCategory, IssuePriority, IssueStatus } from '@/types';
 import { IssueCard } from '@/components/issues/IssueCard';
+import { IssueTable } from '@/components/issues/IssueTable';
 import { Button } from '@/components/ui/Button';
+import {
+  SpatialTabs,
+  SpatialFilter,
+  SpatialSearch,
+  SpatialSelect,
+} from '@/components/ui/SpatialControls';
 import { EmptyState } from '@/components/common/EmptyState';
+import { LoadingState } from '@/components/common/LoadingState';
+import { ErrorState } from '@/components/common/ErrorState';
 import {
   Search,
   Filter,
@@ -21,7 +30,7 @@ import {
 } from 'lucide-react';
 
 export default function IssuesListPage() {
-  const { issues, loading } = useIssues();
+  const { issues, loading, error, refreshIssues } = useIssues();
   const { user } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,6 +38,8 @@ export default function IssuesListPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [scope, setScope] = useState<'ALL' | 'MY'>('ALL');
   const [sortBy, setSortBy] = useState<'NEWEST' | 'UPVOTES' | 'PRIORITY'>('NEWEST');
+  const [viewMode, setViewMode] = useState<'QUEUE' | 'CARDS'>('QUEUE');
+
 
   // Filtering
   const filteredIssues = issues.filter((issue) => {
@@ -86,6 +97,22 @@ export default function IssuesListPage() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <LoadingState message="Loading campus maintenance feed..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <ErrorState message={error} onRetry={refreshIssues} />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Header & Controls */}
@@ -107,73 +134,66 @@ export default function IssuesListPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="rounded-lg border border-warm-300 bg-white p-4 shadow-subtle space-y-3">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-          {/* Search Box */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-ink-muted absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Search by ticket number, classroom, equipment, or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-md border border-warm-300 focus:outline-none focus:border-maroon-700 focus:ring-1 focus:ring-maroon-700 bg-white"
+      <div className="rounded-lg border border-warm-300 bg-white p-4 shadow-subtle space-y-3.5">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+          {/* Spatial Search Box */}
+          <SpatialSearch
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery('')}
+            placeholder="Search by ticket number, classroom, equipment, or description..."
+          />
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Scope Toggle: All Campus vs My Reports (Spatial Tabs) */}
+            <SpatialTabs<'ALL' | 'MY'>
+              tabs={[
+                { id: 'ALL', label: 'All Campus Issues', count: issues.length },
+                { id: 'MY', label: 'My Submissions' },
+              ]}
+              activeTab={scope}
+              onChange={(id) => setScope(id)}
+              layoutId="issues-scope-tab"
+              ariaLabel="Issue scope filter"
+              className="shrink-0"
+            />
+
+            {/* View Mode Toggle: Ledger vs Cards (Spatial Tabs) */}
+            <SpatialTabs<'QUEUE' | 'CARDS'>
+              tabs={[
+                { id: 'QUEUE', label: 'Ledger', icon: <List className="w-3.5 h-3.5" /> },
+                { id: 'CARDS', label: 'Cards', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
+              ]}
+              activeTab={viewMode}
+              onChange={(id) => setViewMode(id)}
+              layoutId="issues-view-mode-tab"
+              ariaLabel="View layout"
+              className="shrink-0"
+            />
+
+            {/* Spatial Sorting Dropdown */}
+            <SpatialSelect
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              aria-label="Sort issues by"
             />
           </div>
-
-          {/* Scope Toggle: All Campus vs My Reports */}
-          <div className="flex rounded-md border border-warm-300 p-0.5 bg-warm-100 text-xs font-medium shrink-0">
-            <button
-              type="button"
-              onClick={() => setScope('ALL')}
-              className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${
-                scope === 'ALL' ? 'bg-white text-maroon-900 shadow-sm font-semibold' : 'text-ink-muted'
-              }`}
-            >
-              All Campus Issues ({issues.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setScope('MY')}
-              className={`px-3 py-1.5 rounded transition-colors cursor-pointer ${
-                scope === 'MY' ? 'bg-white text-maroon-900 shadow-sm font-semibold' : 'text-ink-muted'
-              }`}
-            >
-              My Submissions
-            </button>
-          </div>
-
-          {/* Sorting Dropdown */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-3 py-2 rounded-md border border-warm-300 text-xs sm:text-sm text-ink bg-white focus:outline-none focus:border-maroon-700 cursor-pointer shrink-0"
-          >
-            <option value="NEWEST">Sort: Newest First</option>
-            <option value="UPVOTES">Sort: Most Endorsed</option>
-            <option value="PRIORITY">Sort: Highest Severity</option>
-          </select>
         </div>
 
         {/* Category & Status Filter Pills */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-warm-200 text-xs">
+        <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-warm-200 text-xs">
           <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider mr-1">
             Category:
           </span>
           {['ALL', 'ELECTRICAL', 'PLUMBING', 'IT_NETWORK', 'FACILITY_CLASSROOM', 'LAB_EQUIPMENT', 'SANITATION', 'SAFETY_SECURITY'].map(
             (cat) => (
-              <button
+              <SpatialFilter
                 key={cat}
-                type="button"
+                active={selectedCategory === cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
-                  selectedCategory === cat
-                    ? 'bg-maroon-700 text-white font-medium'
-                    : 'bg-warm-100 hover:bg-warm-200 text-ink-muted'
-                }`}
-              >
-                {cat === 'ALL' ? 'All Categories' : cat.replace('_', ' ')}
-              </button>
+                label={cat === 'ALL' ? 'All Categories' : cat.replace('_', ' ')}
+                variant="category"
+              />
             )
           )}
         </div>
@@ -188,29 +208,30 @@ export default function IssuesListPage() {
             { label: 'In Progress', val: 'IN_PROGRESS' },
             { label: 'Resolved Only', val: 'RESOLVED' },
           ].map((st) => (
-            <button
+            <SpatialFilter
               key={st.val}
-              type="button"
+              active={selectedStatus === st.val}
               onClick={() => setSelectedStatus(st.val)}
-              className={`px-2.5 py-0.5 rounded text-xs transition-colors cursor-pointer ${
-                selectedStatus === st.val
-                  ? 'bg-warm-400 text-ink font-semibold'
-                  : 'bg-warm-100 hover:bg-warm-200 text-ink-muted'
-              }`}
-            >
-              {st.label}
-            </button>
+              label={st.label}
+              variant="status"
+            />
           ))}
         </div>
       </div>
 
-      {/* Issues Feed Grid */}
+      {/* Issues Feed / Ledger */}
       {sortedIssues.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedIssues.map((issue) => (
-            <IssueCard key={issue.id} issue={issue} />
-          ))}
-        </div>
+        viewMode === 'QUEUE' ? (
+          <div className="bg-white rounded-md border border-warm-300 shadow-subtle overflow-hidden">
+            <IssueTable issues={sortedIssues} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sortedIssues.map((issue) => (
+              <IssueCard key={issue.id} issue={issue} />
+            ))}
+          </div>
+        )
       ) : (
         <EmptyState
           title="No campus issues found"

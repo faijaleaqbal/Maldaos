@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useIssues } from '@/context/IssuesContext';
 import { isMockModeEnabled, setMockMode } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
+import { isDevSeedLoginAvailable } from '@/services/devSeedAccounts';
 import { IssueCard } from '@/components/issues/IssueCard';
 import {
   User,
@@ -86,7 +87,7 @@ export default function ProfilePage() {
                 {role === 'STUDENT' ? 'College Registration / Roll No' : 'Employee Staff Code'}
               </span>
               <span className="font-medium font-mono text-ink">
-                {user.studentId || user.staffId || 'MC-REG-2024-819'}
+                {user.studentId || user.staffId || 'MC-2024-REG-042'}
               </span>
             </div>
           </div>
@@ -108,44 +109,46 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Developer / Hackathon Telemetry Settings */}
-        <div className="p-4 bg-warm-100/70 rounded-lg border border-warm-300 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-maroon-800" />
-              <h4 className="font-semibold text-xs sm:text-sm text-ink">
-                Platform Data Layer Configuration
-              </h4>
+        {/* Developer / Hackathon Telemetry Settings (DEV/TEST ONLY — never in production) */}
+        {isDevSeedLoginAvailable() && (
+          <div className="p-4 bg-warm-100/70 rounded-lg border border-warm-300 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-maroon-800" />
+                <h4 className="font-semibold text-xs sm:text-sm text-ink">
+                  Platform Data Layer Configuration
+                </h4>
+              </div>
+              <span
+                className={`text-[11px] px-2 py-0.5 rounded font-mono font-semibold ${
+                  isMock ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-900'
+                }`}
+              >
+                {isMock ? 'MOCK DATA MODE' : 'LIVE SUPABASE MODE'}
+              </span>
             </div>
-            <span
-              className={`text-[11px] px-2 py-0.5 rounded font-mono font-semibold ${
-                isMock ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-900'
-              }`}
-            >
-              {isMock ? 'MOCK DATA MODE' : 'LIVE SUPABASE MODE'}
-            </span>
+            <p className="text-xs text-ink-muted leading-relaxed">
+              MaldaOS operates reliably out of the box with realistic Malda College incidents, and seamlessly synchronizes with PostgreSQL via Supabase when environment keys are set.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setMockMode(!isMock)}
+              >
+                Toggle to {isMock ? 'Live Supabase' : 'Mock Data'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => resetData()}
+                leftIcon={<RefreshCw className="w-3 h-3" />}
+              >
+                Reset Mock Incidents
+              </Button>
+            </div>
           </div>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            CampusPulse operates reliably out of the box with realistic Malda College incidents, and seamlessly synchronizes with PostgreSQL via Supabase when environment keys are set.
-          </p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setMockMode(!isMock)}
-            >
-              Toggle to {isMock ? 'Live Supabase' : 'Mock Data'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => resetData()}
-              leftIcon={<RefreshCw className="w-3 h-3" />}
-            >
-              Reset Mock Incidents
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Submissions by this user */}

@@ -41,8 +41,10 @@ export const NotificationService = {
 
   /** Synchronous legacy accessor (mock mode or cached) for existing callers. */
   getMockNotifications(): NotificationItem[] {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(NOTIF_STORAGE_KEY);
+    if (process.env.NODE_ENV === 'production') return [];
+    const storage = typeof window !== 'undefined' ? window.localStorage : (typeof localStorage !== 'undefined' ? localStorage : null);
+    if (storage) {
+      const stored = storage.getItem(NOTIF_STORAGE_KEY);
       if (stored) {
         try {
           return JSON.parse(stored);
@@ -51,14 +53,19 @@ export const NotificationService = {
         }
       }
     }
-    // Lazy access mock data only in mock mode
-    const { MOCK_NOTIFICATIONS } = require('./mockData');
-    return MOCK_NOTIFICATIONS;
+    try {
+      // Dynamic require in dev only — dead-code eliminated in production builds
+      const { MOCK_NOTIFICATIONS } = require('./mockData');
+      return MOCK_NOTIFICATIONS || [];
+    } catch {
+      return [];
+    }
   },
 
   saveNotifications(items: NotificationItem[]): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(items));
+    const storage = typeof window !== 'undefined' ? window.localStorage : (typeof localStorage !== 'undefined' ? localStorage : null);
+    if (storage) {
+      storage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(items));
     }
   },
 
@@ -107,15 +114,11 @@ export const NotificationService = {
 
   /** MOCK MODE ONLY: local demo notification. Live notifications are created
    *  by the backend's notify_user() RPC helper — the browser never writes them. */
-  addNotification(item: Omit<NotificationItem, 'id' | 'createdAt' | 'read'>): NotificationItem {
+  addNotification(item: Omit<NotificationItem, 'id' | 'createdAt' | 'read'>): NotificationItem | null {
     if (!isMockModeEnabled()) {
-      // Live: generated server-side by RPCs; ignore local synthetic writes.
-      return {
-        ...item,
-        id: `local-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        read: true,
-      };
+      // Live: notifications are generated strictly server-side by RPCs/triggers;
+      // the client never fabricates synthetic notification records.
+      return null;
     }
     const list = this.getMockNotifications();
     const newItem: NotificationItem = {

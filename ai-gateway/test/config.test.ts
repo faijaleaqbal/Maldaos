@@ -13,5 +13,13 @@ test("loadConfig reads env vars and supplies defaults", () => {
 test("loadConfig defaults contain all providers + deterministic", () => {
   const def = loadConfig({} as any);
   for (const p of ["groq", "openrouter", "nvidia", "google", "deterministic"]) assert.ok(def.chain.includes(p));
-  assert.equal(def.providers.groq.model, "llama-3.3-70b-versatile");
+  assert.equal(def.providers.groq.model, "openai/gpt-oss-20b");
+  assert.equal(def.providers.google.model, "gemini-3.5-flash-lite");
+  assert.equal(def.providers.google.baseUrl, "https://generativelanguage.googleapis.com/v1beta/openai");
+});
+
+test("model defaults are not the decommissioned Phase-8 models", () => {
+  const def = loadConfig({} as any);
+  assert.notEqual(def.providers.groq.model, "llama-3.3-70b-versatile");
+  assert.notEqual(def.providers.google.model, "gemini-1.5-flash");
 });

@@ -84,6 +84,9 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     <div className="space-y-4">
       {/* Upload Drop Zone */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Upload photo evidence or take picture"
         onDragOver={(e) => {
           e.preventDefault();
           setDragActive(true);
@@ -95,7 +98,13 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
           handleFiles(e.dataTransfer.files);
         }}
         onClick={() => fileInputRef.current?.click()}
-        className={`rounded-lg border-2 border-dashed p-6 text-center cursor-pointer transition-colors ${
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
+        className={`rounded-lg border-2 border-dashed p-6 text-center cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700 ${
           dragActive
             ? 'border-maroon-700 bg-maroon-50/50'
             : 'border-warm-300 hover:border-maroon-400 bg-white'
@@ -176,10 +185,11 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
                       e.stopPropagation();
                       removeFile(idx);
                     }}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-warm-200 hover:bg-rose-100 hover:text-rose-700 text-ink-muted flex items-center justify-center transition-colors cursor-pointer"
+                    aria-label={`Remove image ${file.name || idx + 1}`}
+                    className="absolute top-1.5 right-1.5 min-w-[36px] min-h-[36px] sm:min-w-[30px] sm:min-h-[30px] rounded-full bg-warm-200 hover:bg-rose-100 hover:text-rose-700 text-ink-muted flex items-center justify-center transition-colors cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-700"
                     title="Remove image"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
               );
@@ -212,10 +222,11 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
                     e.stopPropagation();
                     removeFile(idx);
                   }}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-rose-700 transition-colors cursor-pointer"
+                  aria-label={`Remove attached image ${idx + 1}`}
+                  className="absolute top-1.5 right-1.5 min-w-[36px] min-h-[36px] sm:min-w-[30px] sm:min-h-[30px] rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-rose-700 transition-colors cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-700"
                   title="Remove image"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
             ))}

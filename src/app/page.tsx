@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useIssues } from '@/context/IssuesContext';
 import { useAuth } from '@/context/AuthContext';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { IssueCard } from '@/components/issues/IssueCard';
 import { PriorityBadge } from '@/components/issues/PriorityBadge';
 import { IssueStatusBadge } from '@/components/issues/IssueStatusBadge';
+import { isDevSeedLoginAvailable } from '@/services/devSeedAccounts';
 import {
   PlusCircle,
   Search,
@@ -17,13 +19,34 @@ import {
   ShieldCheck,
   Cpu,
   ArrowRight,
-  Sparkles,
   MapPin,
   Activity,
   ChevronRight,
   GraduationCap,
   Building2,
+  Compass,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
+
+// Dynamically load the Devini-grade 3D Campus Experience to ensure white-screen protection and fast startup
+const CampusHeroScene = dynamic(
+  () => import('@/components/3d/CampusHeroScene').then((mod) => mod.CampusHeroScene),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full min-h-[580px] lg:min-h-[720px] bg-paper-100 flex flex-col items-center justify-center gap-3 p-6 text-center animate-pulse border-b border-warm-300">
+        <Compass className="w-10 h-10 text-maroon-800 animate-spin" />
+        <span className="font-serif font-bold text-lg text-maroon-950">
+          Malda College Digital Campus
+        </span>
+        <span className="text-xs text-ink-muted">
+          Initializing 3D spatial environment & architectural geometries...
+        </span>
+      </div>
+    ),
+  }
+);
 
 export default function HomePage() {
   const router = useRouter();
@@ -46,186 +69,158 @@ export default function HomePage() {
   };
 
   const recentIssues = issues.slice(0, 3);
-  const criticalIssue = issues.find((i) => i.priority === 'URGENT' && i.status !== 'RESOLVED' && i.status !== 'CLOSED');
+  const criticalIssue = issues.find(
+    (i) => i.priority === 'URGENT' && i.status !== 'RESOLVED' && i.status !== 'CLOSED'
+  );
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="space-y-8 pb-16">
       {/* Top Urgent Incident Banner (if any critical issues active) */}
       {criticalIssue && (
-        <div className="bg-rose-900 text-white px-4 py-2.5 text-xs">
+        <div className="bg-rose-900 text-white px-4 py-2.5 text-xs border-b border-rose-800">
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
               <span className="font-semibold uppercase tracking-wider text-rose-200">
-                Active Campus Safety Notice:
+                Active Campus Hazard Alert:
               </span>
               <span className="font-medium text-white">{criticalIssue.title}</span>
-              <span className="text-rose-200 hidden md:inline">({criticalIssue.location.building})</span>
+              <span className="text-rose-200 hidden md:inline">
+                ({criticalIssue.location.building})
+              </span>
             </div>
             <Link
               href={`/issues/${criticalIssue.id}`}
               className="text-gold-300 hover:text-gold-200 underline font-semibold flex items-center gap-1"
             >
-              <span>View Safety Status</span>
+              <span>Inspect Work Order</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
         </div>
       )}
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-warm-200/80 via-warm-100 to-warm-100 border-b border-warm-300 py-12 sm:py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* Left Narrative */}
-            <div className="lg:col-span-7 space-y-5">
-              <div className="inline-flex items-center gap-2 bg-maroon-50 border border-maroon-200 text-maroon-900 px-3 py-1 rounded-md text-xs font-semibold uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-maroon-700" />
-                <span>Malda College Digital Infrastructure</span>
+      {/* DEVINI-GRADE FULL 3D HERO EXPERIENCE WITH SCROLL STORYTELLING */}
+      <section className="relative w-full">
+        <CampusHeroScene />
+      </section>
+
+      {/* Institutional Operational Command Bar & Ticket Search */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center bg-white p-5 rounded-lg border border-warm-300 shadow-subtle">
+          {/* Fast Ticket Lookup Form */}
+          <div className="lg:col-span-6 space-y-1.5">
+            <label
+              htmlFor="hp-ticket-search"
+              className="block text-[11px] font-semibold text-ink-muted uppercase tracking-wider"
+            >
+              Track Ticket Status by Reference ID
+            </label>
+            <form onSubmit={handleTicketSearch} className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  id="hp-ticket-search"
+                  type="text"
+                  placeholder="e.g. MC-2027-0104"
+                  value={searchTicket}
+                  onChange={(e) => setSearchTicket(e.target.value)}
+                  className="w-full rounded-md border border-warm-300 bg-warm-50/50 hover:bg-white px-3.5 py-2 text-xs sm:text-sm text-ink pr-10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] focus:bg-white focus:outline-none focus:border-maroon-700 focus:ring-1 focus:ring-maroon-700 font-mono transition-colors"
+                />
               </div>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                className="min-h-[38px] px-4 font-semibold shrink-0"
+              >
+                Track
+              </Button>
+            </form>
+          </div>
 
-              <h1 className="font-serif font-bold text-3xl sm:text-5xl text-maroon-950 tracking-tight leading-[1.15]">
-                Responsive Campus Operations, Assisted by AI.
-              </h1>
-
-              <p className="text-sm sm:text-base text-ink-muted max-w-xl leading-relaxed font-sans">
-                Malda College’s institutional platform for rapid issue reporting, physical facility diagnostics, and operational resolution. AI prioritizes and routes requests while campus duty officers take action.
-              </p>
-
-              {/* Action Buttons & Fast Ticket Search */}
-              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <Link href="/report">
-                  <Button size="lg" variant="primary" leftIcon={<PlusCircle className="w-5 h-5 text-gold-400" />}>
-                    Report Campus Issue
-                  </Button>
-                </Link>
-
-                <Link href="/dashboard">
-                  <Button size="lg" variant="secondary" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                    Open Student Dashboard
-                  </Button>
-                </Link>
+          {/* Quick Spatial GIS Link & Health Meter */}
+          <div className="lg:col-span-6 flex flex-wrap items-center justify-between sm:justify-end gap-4 border-t lg:border-t-0 border-warm-200 pt-4 lg:pt-0">
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <span className="block text-[10px] uppercase font-mono font-semibold text-ink-muted">
+                  Campus Health Index
+                </span>
+                <span className="font-mono text-xl font-bold text-maroon-900">
+                  {summary.campusHealth.statusLabel === 'INSUFFICIENT_DATA'
+                    ? '—'
+                    : `${summary.campusHealth.overall} / 100`}
+                </span>
               </div>
-
-              {/* Fast Ticket Lookup Bar */}
-              <form onSubmit={handleTicketSearch} className="pt-2 max-w-md">
-                <div className="relative flex items-center">
-                  <input
-                    type="text"
-                    placeholder="Enter Ticket ID (e.g. MC-2027-0104) to track status..."
-                    value={searchTicket}
-                    onChange={(e) => setSearchTicket(e.target.value)}
-                    className="w-full rounded-md border border-warm-300 bg-white px-3.5 py-2 text-xs sm:text-sm text-ink pr-24 focus:outline-none focus:border-maroon-700 focus:ring-1 focus:ring-maroon-700 shadow-sm"
-                  />
-                  <button
-                    type="submit"
-                    className="absolute right-1 px-3 py-1 bg-maroon-700 hover:bg-maroon-800 text-white rounded text-xs font-medium cursor-pointer"
-                  >
-                    Track
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Right Operational Summary Card */}
-            <div className="lg:col-span-5">
-              <div className="rounded-xl border border-warm-300 bg-white p-5 sm:p-6 shadow-card space-y-4 relative">
-                <div className="flex items-center justify-between border-b border-warm-200 pb-3">
-                  <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-maroon-900 block">
-                      Campus Operational Health
-                    </span>
-                    <h3 className="font-serif font-bold text-xl text-ink">Malda College Core Status</h3>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-serif text-3xl font-bold text-maroon-900">
-                      {summary.campusHealth.overall}
-                    </span>
-                    <span className="text-xs text-ink-muted block">/ 100 Score</span>
-                  </div>
-                </div>
-
-                {/* KPI Metrics Strip */}
-                <div className="grid grid-cols-3 gap-2 py-1 text-center">
-                  <div className="p-2.5 rounded bg-warm-100 border border-warm-200">
-                    <span className="block font-mono text-lg font-bold text-ink">
-                      {summary.openIssues}
-                    </span>
-                    <span className="text-[11px] text-ink-muted">Open Tickets</span>
-                  </div>
-                  <div className="p-2.5 rounded bg-warm-100 border border-warm-200">
-                    <span className="block font-mono text-lg font-bold text-emerald-700">
-                      {summary.resolutionRate}%
-                    </span>
-                    <span className="text-[11px] text-ink-muted">Resolution Rate</span>
-                  </div>
-                  <div className="p-2.5 rounded bg-warm-100 border border-warm-200">
-                    <span className="block font-mono text-lg font-bold text-maroon-800">
-                      {summary.averageResolutionHours}h
-                    </span>
-                    <span className="text-[11px] text-ink-muted">Avg MTTR</span>
-                  </div>
-                </div>
-
-                {/* AI Triage Explainer Callout */}
-                <div className="rounded-lg border border-ai-border bg-ai-surface p-3 text-xs text-ai-text flex items-start gap-2.5">
-                  <Sparkles className="w-4 h-4 text-ai-600 shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="block font-semibold">AI Operational Triage Gateway</strong>
-                    <p className="text-ink-muted mt-0.5 leading-relaxed">
-                      Incident reports are automatically categorized, similarity-scored, and suggested for priority. Maintenance assignments remain human-verified.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Role Switching Shortcut for Judges */}
-                <div className="pt-2 border-t border-warm-200">
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="text-ink-muted font-medium">Evaluate Experience As:</span>
-                    <span className="text-maroon-800 font-semibold">{user.name} ({role})</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => switchRole('STUDENT')}
-                      className={`p-2 rounded border text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-                        role === 'STUDENT'
-                          ? 'bg-maroon-700 text-white border-maroon-800'
-                          : 'bg-warm-100 hover:bg-warm-200 border-warm-300 text-ink'
-                      }`}
-                    >
-                      <GraduationCap className="w-3.5 h-3.5" />
-                      <span>Student View</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => switchRole('SUPER_ADMIN')}
-                      className={`p-2 rounded border text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-                        role === 'SUPER_ADMIN'
-                          ? 'bg-maroon-700 text-white border-maroon-800'
-                          : 'bg-warm-100 hover:bg-warm-200 border-warm-300 text-ink'
-                      }`}
-                    >
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>Admin Console</span>
-                    </button>
-                  </div>
-                </div>
+              <div className="h-8 w-px bg-warm-200" />
+              <div className="text-right">
+                <span className="block text-[10px] uppercase font-mono font-semibold text-ink-muted">
+                  Open Orders
+                </span>
+                <span className="font-mono text-xl font-bold text-ink">
+                  {summary.openIssues}
+                </span>
               </div>
             </div>
+
+            <Link href="/map">
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={<Compass className="w-3.5 h-3.5 text-maroon-800" />}
+                className="text-maroon-900 font-semibold"
+              >
+                Full 3D GIS Map
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Main Content Grid: Recent Issues & Operating Architecture */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-        {/* Section 1: Recent Campus Activity */}
+      {/* Role Switcher Sandbox (Evaluation only) */}
+      {isDevSeedLoginAvailable() && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-warm-50/70 border border-warm-300 rounded-lg p-3 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-ink">Evaluation Persona:</span>
+              <span className="font-mono font-bold text-maroon-900">
+                {user.name} ({role})
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant={role === 'STUDENT' ? 'primary' : 'secondary'}
+                onClick={() => switchRole('STUDENT')}
+                leftIcon={<GraduationCap className="w-3.5 h-3.5" />}
+                className="h-8 py-1 px-3 text-xs"
+              >
+                Student View
+              </Button>
+              <Button
+                size="sm"
+                variant={role === 'SUPER_ADMIN' ? 'primary' : 'secondary'}
+                onClick={() => switchRole('SUPER_ADMIN')}
+                leftIcon={<Building2 className="w-3.5 h-3.5" />}
+                className="h-8 py-1 px-3 text-xs"
+              >
+                Admin Console
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Main Content: Recent Active Issues & SOP Protocol */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* Section 1: Recent Campus Maintenance Queue */}
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-warm-300 pb-2">
             <div>
-              <h2 className="font-serif font-bold text-xl text-ink">Active Campus Incident Reports</h2>
+              <h2 className="font-serif font-bold text-lg sm:text-xl text-ink">
+                Active Campus Maintenance Queue
+              </h2>
               <p className="text-xs text-ink-muted">
-                Real-time visibility into Malda College facility maintenance
+                Public bulletin of verified physical repairs and maintenance across Malda College
               </p>
             </div>
             <Link
@@ -237,108 +232,93 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {recentIssues.map((issue) => (
-              <IssueCard key={issue.id} issue={issue} />
-            ))}
-          </div>
+          {recentIssues.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {recentIssues.map((issue) => (
+                <IssueCard key={issue.id} issue={issue} />
+              ))}
+            </div>
+          ) : (
+            <div className="p-6 rounded-lg border border-warm-300 bg-white text-center space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-emerald-700 mx-auto" aria-hidden="true" />
+              <h3 className="font-serif font-semibold text-base text-ink">
+                All Campus Infrastructure Nominal
+              </h3>
+              <p className="text-xs text-ink-muted max-w-md mx-auto">
+                No active work orders currently require public notice. Students and faculty who observe damaged fixtures or safety hazards can lodge an immediate requisition.
+              </p>
+              <div className="pt-2">
+                <Link href="/report">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    leftIcon={<PlusCircle className="w-3.5 h-3.5 text-gold-400" />}
+                  >
+                    Lodge Campus Requisition
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Section 2: How CampusPulse Works (Institutional Lifecycle) */}
-        <div className="rounded-xl border border-warm-300 bg-white p-6 sm:p-8 shadow-card">
-          <div className="text-center max-w-xl mx-auto mb-8 space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-maroon-800">
-              Institutional Methodology
+        {/* Section 2: Standard Operating Procedure (SOP) */}
+        <div className="rounded-lg border border-warm-300 bg-white p-5 sm:p-6 shadow-subtle">
+          <div className="border-b border-warm-200 pb-3 mb-5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-maroon-800 block">
+              Institutional Protocol
             </span>
-            <h2 className="font-serif font-bold text-2xl text-ink">
-              From Student Report to Verified Resolution
+            <h2 className="font-serif font-bold text-lg sm:text-xl text-ink">
+              Malda College Incident Lifecycle (SOP)
             </h2>
-            <p className="text-xs sm:text-sm text-ink-muted">
-              CampusPulse connects students directly with facility management cells through structured telemetry.
+            <p className="text-xs text-ink-muted mt-0.5">
+              Approved maintenance resolution workflow under the Internal Quality Assurance Cell (IQAC)
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-4 rounded-lg bg-warm-50 border border-warm-200 space-y-2">
-              <div className="w-8 h-8 rounded bg-maroon-100 text-maroon-800 font-mono font-bold flex items-center justify-center text-sm">
-                01
-              </div>
-              <h3 className="font-serif font-semibold text-base text-ink">Lodge Report</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-3.5 rounded bg-warm-50 border border-warm-200 space-y-1.5">
+              <span className="font-mono font-bold text-xs text-maroon-800 bg-white px-2 py-0.5 rounded border border-warm-200 inline-block">
+                01. Intake
+              </span>
+              <h3 className="font-serif font-semibold text-sm text-ink">Incident Lodge</h3>
               <p className="text-xs text-ink-muted leading-relaxed">
-                Student captures photos, selects campus block, and describes classroom or lab faults.
+                Students and faculty submit photographic evidence and designate exact classroom or lab coordinates.
               </p>
             </div>
 
-            <div className="p-4 rounded-lg bg-ai-surface border border-ai-border space-y-2">
-              <div className="w-8 h-8 rounded bg-ai-100 text-ai-700 font-mono font-bold flex items-center justify-center text-sm">
-                02
-              </div>
-              <h3 className="font-serif font-semibold text-base text-ink flex items-center gap-1.5">
-                <span>AI Triage</span>
-                <Sparkles className="w-3.5 h-3.5 text-ai-600" />
-              </h3>
+            <div className="p-3.5 rounded bg-warm-50 border border-warm-200 space-y-1.5">
+              <span className="font-mono font-bold text-xs text-maroon-800 bg-white px-2 py-0.5 rounded border border-warm-200 inline-block">
+                02. Triage
+              </span>
+              <h3 className="font-serif font-semibold text-sm text-ink">Urgency Assessment</h3>
               <p className="text-xs text-ink-muted leading-relaxed">
-                CampusPulse compares incident semantics, assesses hazard urgency, and suggests initial routing.
+                Automated triage checks hazard severity, flags life-safety threats, and recommends departmental routing.
               </p>
             </div>
 
-            <div className="p-4 rounded-lg bg-warm-50 border border-warm-200 space-y-2">
-              <div className="w-8 h-8 rounded bg-maroon-100 text-maroon-800 font-mono font-bold flex items-center justify-center text-sm">
-                03
-              </div>
-              <h3 className="font-serif font-semibold text-base text-ink">Dispatch & Work</h3>
+            <div className="p-3.5 rounded bg-warm-50 border border-warm-200 space-y-1.5">
+              <span className="font-mono font-bold text-xs text-maroon-800 bg-white px-2 py-0.5 rounded border border-warm-200 inline-block">
+                03. Dispatch
+              </span>
+              <h3 className="font-serif font-semibold text-sm text-ink">Work Dispatch</h3>
               <p className="text-xs text-ink-muted leading-relaxed">
-                Duty officer confirms assignment and deploys skilled technicians (Electrical, Plumbing, IT Cell).
+                Duty officer confirms work order and dispatches licensed campus technicians (Electrical, Plumbing, IT).
               </p>
             </div>
 
-            <div className="p-4 rounded-lg bg-warm-50 border border-warm-200 space-y-2">
-              <div className="w-8 h-8 rounded bg-emerald-100 text-emerald-800 font-mono font-bold flex items-center justify-center text-sm">
-                04
-              </div>
-              <h3 className="font-serif font-semibold text-base text-ink">Verified Closure</h3>
+            <div className="p-3.5 rounded bg-warm-50 border border-warm-200 space-y-1.5">
+              <span className="font-mono font-bold text-xs text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                04. Verification
+              </span>
+              <h3 className="font-serif font-semibold text-sm text-ink">Verified Closure</h3>
               <p className="text-xs text-ink-muted leading-relaxed">
-                Field completion proof logged, reporter notified, and telemetry indexed in Campus Health metrics.
+                Field completion proof logged, resolution note signed off, and student notified upon completion.
               </p>
             </div>
           </div>
         </div>
       </section>
-
-      {/* Institutional Footer */}
-      <footer className="border-t border-warm-300 bg-white pt-8 pb-12 mt-12 text-xs text-ink-muted">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-maroon-700 text-gold-400 font-serif font-bold text-xs flex items-center justify-center">
-                MC
-              </div>
-              <span className="font-serif font-bold text-ink">MALDA COLLEGE</span>
-            </div>
-            <p className="leading-relaxed">
-              Rabindra Avenue, Malda, West Bengal 732101.<br />
-              Affiliated with University of Gour Banga. Established in 1944.
-            </p>
-          </div>
-
-          <div className="space-y-1">
-            <span className="font-semibold text-ink uppercase tracking-wider text-[11px] block">
-              Emergency Maintenance Contacts
-            </span>
-            <p>Electrical Control Room: Ext 204 (+91 94340 77189)</p>
-            <p>Sanitation & Estate: Ext 108</p>
-            <p>IT & Campus Fiber Cell: Ext 314</p>
-          </div>
-
-          <div className="space-y-1">
-            <span className="font-semibold text-ink uppercase tracking-wider text-[11px] block">
-              CampusPulse Platform
-            </span>
-            <p>Hackathon 2027 Production Release.</p>
-            <p>System Governor: Malda College Internal Quality Assurance Cell (IQAC).</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -153,7 +153,11 @@ export async function analyzeIssue(gateway: AIGateway, issue: IssueInput): Promi
   const r = await gateway.send<IssueAnalysis>(req, { feature: "classify.issue_category" });
   if (r.fallback) return { analysis: fallbackAnalysis, provider: r.provider, fallback: true };
   try {
-    const validated = validate<IssueAnalysis>(issueAnalysisSchema, JSON.stringify(r.data));
+    // OpenAI-compatible providers return the assistant message content as a
+    // JSON STRING (AIResponse.data). validate() expects that raw string —
+    // stringifying it again would double-encode and always fail parsing.
+    const raw = typeof r.data === "string" ? r.data : JSON.stringify(r.data);
+    const validated = validate<IssueAnalysis>(issueAnalysisSchema, raw);
     return { analysis: validated, provider: r.provider, fallback: false };
   } catch (_e) {
     return { analysis: fallbackAnalysis, provider: r.provider, fallback: true };

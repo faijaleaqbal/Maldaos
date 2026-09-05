@@ -57,18 +57,23 @@
   }
 }
 
+/* Mobile safe area padding utility */
+.safe-area-pb {
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0.25rem));
+}
+
 /* Leaflet map customization to match institutional palette */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  border-radius: 8px;
+  border-radius: 6px;
   font-family: inherit;
   z-index: 10;
 }
 
 .leaflet-popup-content-wrapper {
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(84, 19, 29, 0.12);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   border: 1px solid #E5DFD5;
   padding: 4px;
 }
@@ -78,31 +83,174 @@
   line-height: 1.4;
 }
 
-/* Pulse badge for critical status */
+/* Subtle indicator for critical status without aggressive vibration */
 @keyframes pulse-dot {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.7);
+  0%, 100% {
+    opacity: 1;
   }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(185, 28, 28, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(185, 28, 28, 0);
+  50% {
+    opacity: 0.5;
   }
 }
 
 .critical-pulse-marker {
-  animation: pulse-dot 2s infinite;
+  animation: pulse-dot 2.5s ease-in-out infinite;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out forwards;
+  animation: fadeIn 0.15s ease-out forwards;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   MALDAOS — SPATIAL TACTILE INTERACTIVE CONTROLS SYSTEM
+   Sylva-hero inspired physical depth, micro-interactions & pointer damping
+   ========================================================================== */
+
+:root {
+  --spatial-rx: 0deg;
+  --spatial-ry: 0deg;
+  --spatial-tz: 0px;
+  --spatial-ty: 0px;
+
+  --ease-spatial-hover: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spatial-press: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spatial-release: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spatial-tab: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Spatial Perspective Container */
+.spatial-perspective {
+  perspective: 700px;
+  transform-style: preserve-3d;
+}
+
+/* Layer 1: Recess Base / Shadow Depth */
+.spatial-shadow-primary {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 2px 0 #54131D,
+    0 3px 6px -1px rgba(84, 19, 29, 0.35);
+}
+.spatial-shadow-primary:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 3px 0 #54131D,
+    0 6px 14px -2px rgba(84, 19, 29, 0.4);
+}
+.spatial-shadow-primary:active,
+.spatial-shadow-primary[data-pressed="true"] {
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.35),
+    0 0.5px 0 #54131D,
+    0 1px 2px rgba(84, 19, 29, 0.2);
+}
+
+.spatial-shadow-gold {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 2px 0 #946B17,
+    0 3px 6px -1px rgba(148, 107, 23, 0.3);
+}
+.spatial-shadow-gold:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 3px 0 #946B17,
+    0 6px 14px -2px rgba(148, 107, 23, 0.35);
+}
+.spatial-shadow-gold:active,
+.spatial-shadow-gold[data-pressed="true"] {
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.25),
+    0 0.5px 0 #946B17;
+}
+
+.spatial-shadow-secondary {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(214, 203, 185, 0.4),
+    0 1.5px 0 #D6CBB9,
+    0 2px 4px -1px rgba(0, 0, 0, 0.05);
+}
+.spatial-shadow-secondary:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(214, 203, 185, 0.3),
+    0 2.5px 0 #D6CBB9,
+    0 5px 10px -2px rgba(0, 0, 0, 0.08);
+}
+.spatial-shadow-secondary:active,
+.spatial-shadow-secondary[data-pressed="true"] {
+  box-shadow:
+    inset 0 1.5px 3px rgba(0, 0, 0, 0.08),
+    0 0.5px 0 #D6CBB9;
+}
+
+.spatial-shadow-danger {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 2px 0 #881337,
+    0 3px 6px -1px rgba(136, 19, 55, 0.35);
+}
+.spatial-shadow-danger:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 3px 0 #881337,
+    0 6px 14px -2px rgba(136, 19, 55, 0.4);
+}
+.spatial-shadow-danger:active,
+.spatial-shadow-danger[data-pressed="true"] {
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.35),
+    0 0.5px 0 #881337,
+    0 1px 2px rgba(136, 19, 55, 0.2);
+}
+
+/* Tactile Surface Motion */
+.spatial-surface {
+  transform: perspective(700px) rotateX(var(--spatial-rx, 0deg)) rotateY(var(--spatial-ry, 0deg)) translateY(var(--spatial-ty, 0px)) translateZ(var(--spatial-tz, 0px));
+  transform-style: preserve-3d;
+  transition: transform 160ms var(--ease-spatial-hover), box-shadow 160ms var(--ease-spatial-hover);
+}
+
+.spatial-surface:active,
+.spatial-surface[data-pressed="true"] {
+  transition: transform 110ms var(--ease-spatial-press), box-shadow 110ms var(--ease-spatial-press);
+}
+
+/* Layer 3: Floating Content Layer */
+.spatial-content {
+  transform: translateZ(3px);
+  transform-style: preserve-3d;
+}
+
+/* Disable 3D tilt on mobile / coarse / reduced-motion */
+@media (max-width: 639px), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .spatial-surface {
+    transform: translateY(var(--spatial-ty, 0px)) !important;
+  }
+  .spatial-content {
+    transform: none !important;
+  }
+}
+
+

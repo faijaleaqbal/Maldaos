@@ -20,12 +20,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   actionHref,
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-lg border border-dashed border-warm-300 bg-white/60">
-      <div className="w-12 h-12 rounded-full bg-warm-200/80 flex items-center justify-center text-maroon-800 mb-3.5">
-        <Icon className="w-6 h-6 stroke-[1.5]" />
+    <div className="flex flex-col items-center justify-center p-5 sm:p-10 text-center rounded-lg border border-dashed border-warm-300 bg-white/60">
+      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-warm-200/80 flex items-center justify-center text-maroon-800 mb-2.5 sm:mb-3.5">
+        <Icon className="w-5 h-5 sm:w-6 sm:h-6 stroke-[1.5]" />
       </div>
       <h3 className="font-serif font-semibold text-base sm:text-lg text-ink mb-1">{title}</h3>
-      <p className="text-xs sm:text-sm text-ink-muted max-w-sm mb-5 leading-relaxed">{description}</p>
+      <p className="text-xs sm:text-sm text-ink-muted max-w-sm mb-3.5 sm:mb-5 leading-relaxed">{description}</p>
       {actionLabel && (
         <>
           {actionHref ? (

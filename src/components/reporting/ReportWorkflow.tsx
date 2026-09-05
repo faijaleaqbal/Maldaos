@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CampusLocation, Issue, IssueCategory, IssuePriority, User } from '@/types';
+import { AIAnalysis, CampusLocation, Issue, IssueCategory, IssuePriority, User } from '@/types';
 import { LocationOption, IssuesService } from '@/services/issues.service';
 import { MALDA_CAMPUS_COORDINATES } from '@/lib/backendTypes';
 import { AIService } from '@/services/ai.service';
@@ -25,7 +25,8 @@ import {
   CheckCircle,
   ArrowRight,
   ArrowLeft,
-  Sparkles,
+  Activity,
+  ShieldCheck,
   ShieldAlert,
   Clock,
   QrCode,
@@ -50,6 +51,8 @@ export const ReportWorkflow: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdIssue, setCreatedIssue] = useState<Issue | null>(null);
   const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | undefined>();
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -95,6 +98,31 @@ export const ReportWorkflow: React.FC = () => {
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Run triage only when the student reaches the review step, using the final
+  // report details and current issue list for duplicate detection.
+  React.useEffect(() => {
+    if (step !== 4 || !title.trim() || !description.trim()) return;
+
+    let cancelled = false;
+    setIsAnalyzing(true);
+    setAiAnalysis(undefined);
+
+    AIService.analyzeIssue(title, description, location.building, issues)
+      .then((analysis) => {
+        if (!cancelled) setAiAnalysis(analysis);
+      })
+      .catch(() => {
+        if (!cancelled) setAiAnalysis(undefined);
+      })
+      .finally(() => {
+        if (!cancelled) setIsAnalyzing(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [step, title, description, location.building, issues]);
 
   const validateStep = (currentStep: number): boolean => {
     const errs: Record<string, string> = {};
@@ -145,7 +173,9 @@ export const ReportWorkflow: React.FC = () => {
         imageFiles,
       });
 
-      setCreatedIssue(created);
+      // Analysis is intentionally attached to the receipt view even when the
+      // persistence layer has not stored an AI result for this new ticket.
+      setCreatedIssue({ ...created, aiAnalysis });
       setStep(5);
     } catch (err: any) {
       console.error('Issue submission error:', err);
@@ -197,11 +227,11 @@ export const ReportWorkflow: React.FC = () => {
                     {isDone ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                   </div>
                   <span
-                    className={`text-[11px] font-medium mt-1.5 ${
+                    className={`text-[10px] sm:text-[11px] font-medium mt-1.5 text-center leading-tight ${
                       isCurrent ? 'text-maroon-800 font-semibold' : 'text-ink-muted'
                     }`}
                   >
-                    Step {s.num}: {s.label}
+                    <span className="hidden sm:inline">Step {s.num}: </span>{s.label}
                   </span>
                 </li>
               );
@@ -285,7 +315,7 @@ export const ReportWorkflow: React.FC = () => {
           </div>
 
           <div className="flex justify-end pt-3 border-t border-warm-200">
-            <Button onClick={handleNext} rightIcon={<ArrowRight className="w-4 h-4" />}>
+            <Button onClick={handleNext} rightIcon={<ArrowRight className="w-4 h-4" />} className="w-full sm:w-auto">
               Proceed to Photo Evidence
             </Button>
           </div>
@@ -309,11 +339,11 @@ export const ReportWorkflow: React.FC = () => {
 
           <ImageUploader imageFiles={imageFiles} onFilesChange={setImageFiles} />
 
-          <div className="flex items-center justify-between pt-3 border-t border-warm-200">
-            <Button variant="secondary" onClick={handleBack} leftIcon={<ArrowLeft className="w-4 h-4" />}>
-              Back
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-warm-200">
+            <Button variant="secondary" onClick={handleBack} leftIcon={<ArrowLeft className="w-4 h-4" />} className="w-full sm:w-auto">
+              Back to Description
             </Button>
-            <Button onClick={handleNext} rightIcon={<ArrowRight className="w-4 h-4" />}>
+            <Button onClick={handleNext} rightIcon={<ArrowRight className="w-4 h-4" />} className="w-full sm:w-auto">
               Proceed to Campus Location
             </Button>
           </div>
@@ -337,11 +367,11 @@ export const ReportWorkflow: React.FC = () => {
           <LocationPicker location={location} locations={locations} onChange={setLocation} />
           {errors.location && <p className="text-xs text-rose-600 font-medium">{errors.location}</p>}
 
-          <div className="flex items-center justify-between pt-3 border-t border-warm-200">
-            <Button variant="secondary" onClick={handleBack} leftIcon={<ArrowLeft className="w-4 h-4" />}>
-              Back
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-warm-200">
+            <Button variant="secondary" onClick={handleBack} leftIcon={<ArrowLeft className="w-4 h-4" />} className="w-full sm:w-auto">
+              Back to Evidence
             </Button>
-            <Button onClick={handleNext} rightIcon={<ArrowRight className="w-4 h-4" />}>
+            <Button onClick={handleNext} rightIcon={<ArrowRight className="w-4 h-4" />} className="w-full sm:w-auto">
               Review Report
             </Button>
           </div>
@@ -423,28 +453,58 @@ export const ReportWorkflow: React.FC = () => {
             </div>
           </div>
 
+          <div className="space-y-3">
+            <div>
+              <h4 className="text-xs font-semibold text-ink uppercase tracking-wider mb-2">
+                Automated Triage Preview
+              </h4>
+              <AIAnalysisPanel analysis={aiAnalysis} isLoading={isAnalyzing} />
+            </div>
+
+            {aiAnalysis &&
+              (aiAnalysis.detectedCategory !== category ||
+                (!isSafetyHazard && aiAnalysis.suggestedPriority !== priority)) && (
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setCategory(aiAnalysis.detectedCategory);
+                      if (!isSafetyHazard) setPriority(aiAnalysis.suggestedPriority);
+                    }}
+                    leftIcon={<Activity className="w-3.5 h-3.5" />}
+                  >
+                    Apply Diagnostic Triage
+                  </Button>
+                </div>
+              )}
+          </div>
+
           {/* Submission Notice */}
-          <div className="rounded-md border border-ai-border bg-ai-surface p-3 text-xs text-ai-text flex items-start gap-2.5">
-            <Sparkles className="w-4 h-4 text-ai-600 shrink-0 mt-0.5" />
+          <div className="rounded-md border border-warm-300 bg-warm-50 p-3 text-xs text-ink flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-maroon-700 shrink-0 mt-0.5" />
             <div className="space-y-0.5">
-              <span className="font-semibold block">What happens when you click Submit?</span>
+              <span className="font-semibold block text-maroon-950">Institutional Submission Protocol</span>
               <p className="text-ink-muted leading-relaxed">
-                CampusPulse automated triage parses your incident description, analyzes similarities against known campus faults, tags appropriate maintenance cells, and alerts duty officers.
+                MaldaOS triage parses your incident description, analyzes similarities against known campus faults, tags appropriate maintenance cells, and alerts duty officers.
               </p>
             </div>
           </div>
 
           {errors.submit && <p className="text-xs text-rose-600 font-medium">{errors.submit}</p>}
 
-          <div className="flex items-center justify-between pt-3 border-t border-warm-200">
-            <Button variant="secondary" onClick={handleBack} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-warm-200">
+            <Button variant="secondary" onClick={handleBack} leftIcon={<ArrowLeft className="w-4 h-4" />} className="w-full sm:w-auto">
               Back to Location
             </Button>
             <Button
               variant="primary"
               onClick={handleSubmit}
-              isLoading={isSubmitting}
+              isLoading={isSubmitting || isAnalyzing}
+              disabled={isSubmitting || isAnalyzing}
               rightIcon={<CheckCircle className="w-4 h-4" />}
+              className="w-full sm:w-auto"
             >
               Submit Ticket to Operations Desk
             </Button>
@@ -457,17 +517,19 @@ export const ReportWorkflow: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
+          role="status"
+          aria-live="polite"
           className="bg-white rounded-lg border border-warm-300 p-6 sm:p-8 shadow-card space-y-6"
         >
           {/* Header Receipt Badge */}
           <div className="text-center space-y-2 pb-6 border-b border-warm-200">
             <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center mx-auto mb-2">
-              <CheckCircle className="w-8 h-8" />
+              <CheckCircle className="w-8 h-8" aria-hidden="true" />
             </div>
             <span className="text-xs uppercase tracking-wider font-semibold text-emerald-800">
               Malda College Operations Registry
             </span>
-            <h2 className="font-serif font-bold text-2xl sm:text-3xl text-ink">
+            <h2 className="font-serif font-bold text-2xl sm:text-3xl text-ink" tabIndex={-1}>
               Ticket Successfully Registered
             </h2>
             <div className="inline-block bg-warm-100 border border-warm-300 rounded-md px-4 py-1.5 font-mono text-base font-bold text-maroon-900 mt-2">
@@ -527,7 +589,7 @@ export const ReportWorkflow: React.FC = () => {
           {/* What Happens Next Section */}
           <div className="rounded-lg border border-warm-200 bg-warm-50 p-4 space-y-2">
             <h5 className="font-serif font-semibold text-sm text-ink flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-maroon-700" />
+              <Clock className="w-4 h-4 text-maroon-700" aria-hidden="true" />
               What Happens Next?
             </h5>
             <ol className="list-decimal list-inside text-xs text-ink-muted space-y-1 leading-relaxed">
@@ -538,9 +600,10 @@ export const ReportWorkflow: React.FC = () => {
           </div>
 
           {/* Action CTAs */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-warm-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-warm-200">
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => {
                 setTitle('');
                 setDescription('');
@@ -552,12 +615,12 @@ export const ReportWorkflow: React.FC = () => {
               Report Another Issue
             </Button>
 
-            <div className="flex items-center gap-2">
-              <Link href="/dashboard">
-                <Button variant="secondary">Go to Dashboard</Button>
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+              <Link href="/dashboard" className="w-full sm:w-auto">
+                <Button variant="secondary" className="w-full sm:w-auto">Go to Dashboard</Button>
               </Link>
-              <Link href={`/issues/${createdIssue.id}`}>
-                <Button variant="primary" rightIcon={<ExternalLink className="w-4 h-4" />}>
+              <Link href={`/issues/${createdIssue.id}`} className="w-full sm:w-auto">
+                <Button variant="primary" rightIcon={<ExternalLink className="w-4 h-4" />} className="w-full sm:w-auto">
                   Track Live Ticket
                 </Button>
               </Link>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useIssues } from '@/context/IssuesContext';
@@ -10,6 +10,8 @@ import { IssueStatusBadge } from '@/components/issues/IssueStatusBadge';
 import { PriorityBadge } from '@/components/issues/PriorityBadge';
 import { IssueTimeline } from '@/components/issues/IssueTimeline';
 import { AIAnalysisPanel } from '@/components/ai/AIAnalysisPanel';
+import { AIService } from '@/services/ai.service';
+import { canUserClose, canUserResolve, canUserAssign } from '@/lib/adminTransitions';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -21,7 +23,6 @@ import {
   User,
   ThumbsUp,
   MessageSquare,
-  Sparkles,
   ShieldCheck,
   Send,
   CheckCircle2,
@@ -46,6 +47,8 @@ export default function IssueDetailPage() {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [generatedAiAnalysis, setGeneratedAiAnalysis] = useState<Issue['aiAnalysis']>();
+  const [isAnalyzingIssue, setIsAnalyzingIssue] = useState(false);
 
   const { uploadResolutionProof } = useIssues();
 
@@ -53,6 +56,86 @@ export default function IssueDetailPage() {
   const issue = issues.find(
     (i) => i.id === id || i.ticketNumber.toLowerCase() === (id as string).toLowerCase()
   );
+
+  // Older tickets may not have a persisted triage result. Generate a
+  // client-side recommendation for display while retaining the panel's honest
+  // unavailable state if analysis cannot be completed.
+  useEffect(() => {
+    if (!issue || issue.aiAnalysis) {
+      setGeneratedAiAnalysis(undefined);
+      setIsAnalyzingIssue(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsAnalyzingIssue(true);
+    setGeneratedAiAnalysis(undefined);
+
+    AIService.analyzeIssue(issue.title, issue.description, issue.location.building)
+      .then((analysis) => {
+        if (!cancelled) setGeneratedAiAnalysis(analysis);
+      })
+      .catch(() => {
+        if (!cancelled) setGeneratedAiAnalysis(undefined);
+      })
+      .finally(() => {
+        if (!cancelled) setIsAnalyzingIssue(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [issue]);
+
+  const resolveModalRef = useRef<HTMLDivElement>(null);
+  const resolveCloseBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Modal Escape key listener & focus trap
+  useEffect(() => {
+    if (!showResolveModal) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const timer = setTimeout(() => {
+      resolveCloseBtnRef.current?.focus();
+    }, 50);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowResolveModal(false);
+        return;
+      }
+      if (e.key === 'Tab') {
+        const container = resolveModalRef.current;
+        if (!container) return;
+        const focusables = container.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first || !container.contains(document.activeElement)) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last || !container.contains(document.activeElement)) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleKeyDown);
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+        previouslyFocused.focus();
+      }
+    };
+  }, [showResolveModal]);
 
   if (loading) {
     return <LoadingState fullPage message="Fetching ticket lifecycle and telemetry..." />;
@@ -244,8 +327,13 @@ export default function IssueDetailPage() {
         {issue.images && issue.images.length > 0 && (
           <div className="space-y-2 pt-2">
             <h3 className="text-xs font-semibold text-ink uppercase tracking-wider">
-              Photo Evidence ({issue.images.length})
+              {issue.status === 'RESOLVED' ? 'Ticket Attachments' : 'Photo Evidence'} ({issue.images.length})
             </h3>
+            {issue.status === 'RESOLVED' && (
+              <p className="text-[11px] text-ink-muted">
+                Includes the original report evidence and any maintenance proof photo supplied for this resolution.
+              </p>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {issue.images.map((img, idx) => (
                 <div
@@ -255,7 +343,32 @@ export default function IssueDetailPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={img}
-                    alt={`Incident evidence ${idx + 1}`}
+                    alt={`${issue.status === 'RESOLVED' ? 'Ticket attachment' : 'Incident evidence'} ${idx + 1}`}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Resolution Proof Photos if present */}
+        {issue.resolutionProofImages && issue.resolutionProofImages.length > 0 && (
+          <div className="space-y-2 pt-2">
+            <h3 className="text-xs font-semibold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Verified Work Completion Proof ({issue.resolutionProofImages.length})
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {issue.resolutionProofImages.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="aspect-video rounded-lg overflow-hidden border border-emerald-300 bg-warm-100 shadow-subtle"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img}
+                    alt={`Resolution proof photo ${idx + 1}`}
                     className="w-full h-full object-cover hover:scale-105 transition-transform"
                   />
                 </div>
@@ -281,6 +394,9 @@ export default function IssueDetailPage() {
                 Completed on: {new Date(issue.resolvedAt).toLocaleString('en-IN')}
               </p>
             )}
+            <p className="text-[11px] text-emerald-800 leading-relaxed">
+              The maintenance team’s resolution note is preserved in the lifecycle timeline below. Any proof photo supplied by staff appears in the ticket attachments above.
+            </p>
           </div>
         )}
 
@@ -300,24 +416,35 @@ export default function IssueDetailPage() {
               Duty Officer Fast Action Bar ({user.role})
             </span>
             <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleStaffStatusTransition('IN_PROGRESS')}
-                disabled={issue.status === 'IN_PROGRESS' || isUpdatingStatus}
-                isLoading={isUpdatingStatus}
-              >
-                Mark In Progress
-              </Button>
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => setShowResolveModal(true)}
-                disabled={issue.status === 'RESOLVED' || isUpdatingStatus}
-              >
-                Resolve with Proof
-              </Button>
-              {issue.status === 'RESOLVED' && (
+              {issue.status === 'OPEN' && canUserAssign(user.role) && (
+                <Link href="/admin/issues">
+                  <Button size="sm" variant="primary">
+                    Assign in Admin Console
+                  </Button>
+                </Link>
+              )}
+              {issue.status === 'ASSIGNED' && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleStaffStatusTransition('IN_PROGRESS')}
+                  disabled={isUpdatingStatus}
+                  isLoading={isUpdatingStatus}
+                >
+                  Mark In Progress
+                </Button>
+              )}
+              {issue.status === 'IN_PROGRESS' && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => setShowResolveModal(true)}
+                  disabled={isUpdatingStatus}
+                >
+                  Resolve with Proof
+                </Button>
+              )}
+              {issue.status === 'RESOLVED' && canUserClose(user.role) && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -348,16 +475,26 @@ export default function IssueDetailPage() {
 
       {/* Resolve Issue Modal */}
       {showResolveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl border border-warm-300 max-w-lg w-full p-6 shadow-2xl space-y-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="resolve-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowResolveModal(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+        >
+          <div ref={resolveModalRef} className="bg-white rounded-xl border border-warm-300 max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-warm-200 pb-3">
-              <h3 className="font-serif font-bold text-lg text-ink">
+              <h3 id="resolve-modal-title" className="font-serif font-bold text-lg text-ink">
                 Record Resolution & Verification
               </h3>
               <button
+                ref={resolveCloseBtnRef}
                 type="button"
                 onClick={() => setShowResolveModal(false)}
-                className="text-ink-muted hover:text-ink text-sm font-semibold cursor-pointer"
+                aria-label="Close resolution modal"
+                className="w-8 h-8 rounded-md hover:bg-warm-100 flex items-center justify-center text-ink-muted hover:text-ink text-sm font-semibold cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700"
               >
                 ✕
               </button>
@@ -374,10 +511,11 @@ export default function IssueDetailPage() {
               />
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-ink uppercase tracking-wider">
+                <label htmlFor="resolve-proof-file" className="block text-xs font-semibold text-ink uppercase tracking-wider">
                   Resolution Proof Photo (Optional)
                 </label>
                 <input
+                  id="resolve-proof-file"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   onChange={(e) => {
@@ -434,14 +572,15 @@ export default function IssueDetailPage() {
           </div>
 
           {/* AI Analysis Panel */}
-          {issue.aiAnalysis && (
-            <div className="space-y-2">
-              <h3 className="font-serif font-semibold text-base text-ink">
-                Automated Triage Evaluation
-              </h3>
-              <AIAnalysisPanel analysis={issue.aiAnalysis} />
-            </div>
-          )}
+          <div className="space-y-2">
+            <h3 className="font-serif font-semibold text-base text-ink">
+              Automated Triage Evaluation
+            </h3>
+            <AIAnalysisPanel
+              analysis={issue.aiAnalysis || generatedAiAnalysis}
+              isLoading={isAnalyzingIssue}
+            />
+          </div>
         </div>
 
         {/* Right Column: Discussion & Activity Comments */}
@@ -548,4 +687,3 @@ export default function IssueDetailPage() {
     </div>
   );
 }
-

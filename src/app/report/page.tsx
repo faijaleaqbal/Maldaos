@@ -17,11 +17,11 @@ export default function ReportIssuePage() {
           Lodge a Campus Facility Issue
         </h1>
         <p className="text-xs sm:text-sm text-ink-muted leading-relaxed font-sans">
-          Complete the 5-step incident form below. Our automated triage evaluates urgency, notifies the concerned departmental cell, and provides you with a real-time tracking ticket.
+          Complete the 4-step incident form below. Our automated triage evaluates urgency, notifies the concerned departmental cell, and provides you with a real-time tracking ticket.
         </p>
       </div>
 
-      {/* The 5-Step Workflow Component */}
+      {/* The 4-Step Workflow Component */}
       <ReportWorkflow />
 
       {/* Direct Maintenance Desk Contacts */}

@@ -78,6 +78,7 @@ export const AuthService = {
       email: '',
       role: 'STUDENT',
       department: 'Malda College',
+      studentId: 'MC-2024-REG-042',
     };
   },
 

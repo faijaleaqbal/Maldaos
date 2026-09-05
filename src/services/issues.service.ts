@@ -19,15 +19,15 @@ import {
   TimelineEvent,
   CampusLocation,
   BackendError,
+  AuditLogEntry,
 } from '@/types';
-import { INITIAL_MOCK_ISSUES } from './mockData';
 
 const ISSUES_STORAGE_KEY = 'campuspulse_issues_store_v1';
 
 /** The exact PostgREST select used for every issue read (row + relations). */
 const ISSUE_SELECT = `
   *,
-  locations:location_id(id, name, code),
+  locations:location_id(id, name, code, latitude, longitude),
   departments:department_id(id, name, code),
   profiles:student_id(id, full_name, role),
   issue_images(id, storage_path, kind, file_size_bytes, content_type),
@@ -88,6 +88,9 @@ export const IssuesService = {
   // MOCK MODE ONLY — localStorage persistence. NEVER called in live mode.
   // ------------------------------------------------------------
   getLocalIssues(): Issue[] {
+    if (process.env.NODE_ENV === 'production') {
+      return [];
+    }
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(ISSUES_STORAGE_KEY);
       if (stored) {
@@ -98,7 +101,12 @@ export const IssuesService = {
         }
       }
     }
-    return INITIAL_MOCK_ISSUES;
+    try {
+      const { INITIAL_MOCK_ISSUES } = require('./mockData');
+      return INITIAL_MOCK_ISSUES || [];
+    } catch {
+      return [];
+    }
   },
 
   saveLocalIssues(issues: Issue[]): void {
@@ -127,13 +135,13 @@ export const IssuesService = {
     };
   },
 
-  // ------------------------------------------------------------
-  // INTERNAL: signed URLs for a row's private-bucket images
-  // ------------------------------------------------------------
-  async signedImageUrls(row: IssueRow): Promise<string[]> {
+  async signedImageGroups(row: IssueRow): Promise<{ evidence: string[]; resolutionProof: string[]; all: string[] }> {
     const supabase = getSupabaseClient();
-    if (!supabase || !row.issue_images || row.issue_images.length === 0) return [];
-    const urls: string[] = [];
+    if (!supabase || !row.issue_images || row.issue_images.length === 0) {
+      return { evidence: [], resolutionProof: [], all: [] };
+    }
+    const evidence: string[] = [];
+    const resolutionProof: string[] = [];
     for (const img of row.issue_images as ImageRow[]) {
       try {
         const bucket = BUCKET_FOR_KIND[img.kind] || 'issue-photos';
@@ -141,13 +149,22 @@ export const IssuesService = {
           .from(bucket)
           .createSignedUrl(img.storage_path, 3600);
         if (!error && data?.signedUrl) {
-          urls.push(data.signedUrl);
+          if (img.kind === 'RESOLUTION_PROOF') {
+            resolutionProof.push(data.signedUrl);
+          } else {
+            evidence.push(data.signedUrl);
+          }
         }
       } catch (e) {
         console.warn('Could not generate signed URL for image:', img.storage_path);
       }
     }
-    return urls;
+    return { evidence, resolutionProof, all: [...evidence, ...resolutionProof] };
+  },
+
+  async signedImageUrls(row: IssueRow): Promise<string[]> {
+    const groups = await this.signedImageGroups(row);
+    return groups.all;
   },
 
   // ------------------------------------------------------------
@@ -175,9 +192,10 @@ export const IssuesService = {
     const viewer = await this.getViewer();
     const rows = (data || []) as unknown as IssueRow[];
     return Promise.all(
-      rows.map(async (row) =>
-        mapIssueRowToViewModel(row, viewer, await this.signedImageUrls(row))
-      )
+      rows.map(async (row) => {
+        const groups = await this.signedImageGroups(row);
+        return mapIssueRowToViewModel(row, viewer, groups.evidence, groups.resolutionProof);
+      })
     );
   },
 
@@ -229,7 +247,8 @@ export const IssuesService = {
 
     const row = data as unknown as IssueRow;
     const viewer = await this.getViewer();
-    return mapIssueRowToViewModel(row, viewer, await this.signedImageUrls(row));
+    const groups = await this.signedImageGroups(row);
+    return mapIssueRowToViewModel(row, viewer, groups.evidence, groups.resolutionProof);
   },
 
   // ------------------------------------------------------------
@@ -752,10 +771,52 @@ export const IssuesService = {
     return (data || []) as StaffOption[];
   },
 
+  // ------------------------------------------------------------
+  // GET AUDIT LOGS (Super Admin only, enforced by RLS)
+  // ------------------------------------------------------------
+  async getAuditLogs(issueId?: string): Promise<AuditLogEntry[]> {
+    if (isMockModeEnabled()) {
+      return [];
+    }
+
+    const supabase = requireSupabaseClient();
+    let query = supabase
+      .from('audit_logs')
+      .select('id, actor_id, action, entity, entity_id, old_values, new_values, created_at, profiles:actor_id(id, full_name, role)')
+      .order('created_at', { ascending: false });
+
+    if (issueId) {
+      query = query.eq('entity_id', issueId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('getAuditLogs failed:', error);
+      throw toBackendError(error, 'AUDIT_LOGS_FETCH_FAILED');
+    }
+
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      actorId: row.actor_id,
+      actorName: row.profiles?.full_name || 'System / Automated',
+      actorRole: row.profiles?.role as UserRole | undefined,
+      action: row.action,
+      entity: row.entity,
+      entityId: row.entity_id,
+      oldValues: row.old_values,
+      newValues: row.new_values,
+      createdAt: row.created_at,
+    }));
+  },
+
   resetToInitialMock(): void {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Resetting mock data is disabled in production.');
+    }
     if (typeof window !== 'undefined') {
       localStorage.removeItem(ISSUES_STORAGE_KEY);
-      this.saveLocalIssues(INITIAL_MOCK_ISSUES);
+      const { INITIAL_MOCK_ISSUES } = require('./mockData');
+      this.saveLocalIssues(INITIAL_MOCK_ISSUES || []);
       window.location.reload();
     }
   },

@@ -35,10 +35,42 @@ export async function POST(req: NextRequest) {
         description,
         location: building || 'Campus Facility',
       });
+
+      // Authentic enum mappings from AI Gateway contracts to MaldaOS domain model
+      const mapPriority = (p?: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' => {
+        switch (p) {
+          case 'P1': return 'URGENT';
+          case 'P2': return 'HIGH';
+          case 'P3': return 'MEDIUM';
+          case 'P4': return 'LOW';
+          default: return 'MEDIUM';
+        }
+      };
+
+      const mapSeverity = (s?: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' => {
+        switch (s?.toLowerCase()) {
+          case 'critical': return 'URGENT';
+          case 'high': return 'HIGH';
+          case 'medium': return 'MEDIUM';
+          case 'low': return 'LOW';
+          default: return 'MEDIUM';
+        }
+      };
+
+      const mapCategory = (c?: string): 'INFRASTRUCTURE' | 'ACADEMICS' | 'HOSTEL' | 'CLEANLINESS' | 'SAFETY' | 'OTHER' => {
+        const val = c?.toLowerCase() || '';
+        if (val === 'infrastructure' || val === 'electrical' || val === 'plumbing') return 'INFRASTRUCTURE';
+        if (val === 'academics' || val === 'academic' || val === 'it_network' || val === 'it') return 'ACADEMICS';
+        if (val === 'hostel') return 'HOSTEL';
+        if (val === 'cleanliness' || val === 'sanitation') return 'CLEANLINESS';
+        if (val === 'safety' || val === 'security') return 'SAFETY';
+        return 'OTHER';
+      };
+
       return NextResponse.json({
-        detectedCategory: result.analysis.category?.toUpperCase(),
-        suggestedSeverity: result.analysis.severity,
-        suggestedPriority: result.analysis.priority,
+        detectedCategory: mapCategory(result.analysis.category),
+        suggestedSeverity: mapSeverity(result.analysis.severity),
+        suggestedPriority: mapPriority(result.analysis.priority),
         confidence: result.analysis.confidence,
         summary: result.analysis.summary,
         reasoning: result.analysis.reasoning,

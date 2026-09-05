@@ -373,19 +373,6 @@ export const MALDA_CAMPUS_COORDINATES = {
   lng: 88.1394,
 };
 
-export const LOCATION_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  MAIN: { lat: 25.0088, lng: 88.1394 },
-  LIB: { lat: 25.0089, lng: 88.1402 },
-  'HOST-A': { lat: 25.0095, lng: 88.1385 },
-  CAF: { lat: 25.0082, lng: 88.1397 },
-  SPORT: { lat: 25.0078, lng: 88.1408 },
-};
-
-export function coordinatesForLocation(code: string | null | undefined): { lat: number; lng: number } | undefined {
-  if (!code) return undefined;
-  return LOCATION_COORDINATES[code];
-}
-
 // ============================================================
 // ROW -> VIEW MODEL MAPPERS
 // ============================================================
@@ -425,6 +412,7 @@ export function mapNotificationRow(
       message = 'Your ticket has been dispatched to the maintenance department.';
       break;
     case 'STATUS_CHANGED':
+    case 'STATUS_CHANGE':
       message = status ? `Ticket status changed to ${statusLabel(normalizeStatus(status))}.` : 'Ticket status was updated.';
       break;
     case 'COMMENT_ADDED':
@@ -497,9 +485,9 @@ export function mapLocationRow(
   const name = location?.name || fallbackName;
   const code = location?.code || 'MAIN';
   const coords =
-    (location?.latitude != null && location?.longitude != null
+    location?.latitude != null && location?.longitude != null
       ? { lat: location.latitude, lng: location.longitude }
-      : coordinatesForLocation(code)) || MALDA_CAMPUS_COORDINATES;
+      : MALDA_CAMPUS_COORDINATES;
   return {
     building: name,
     buildingCode: code,
@@ -518,7 +506,8 @@ export function mapLocationRow(
 export function mapIssueRowToViewModel(
   row: IssueRow,
   viewer: { userId?: string; role?: UserRole } = {},
-  signedImageUrls: string[] = []
+  signedImageUrls: string[] = [],
+  resolutionProofUrls: string[] = []
 ): Issue {
   const status = normalizeStatus(row.status);
   const priority = normalizePriority(row.priority);
@@ -598,6 +587,7 @@ export function mapIssueRowToViewModel(
     assignedTo,
     department: row.departments?.name || 'Unassigned Department',
     images: signedImageUrls,
+    resolutionProofImages: resolutionProofUrls,
     upvotes,
     upvotedBy,
     isAnonymous: row.is_anonymous,

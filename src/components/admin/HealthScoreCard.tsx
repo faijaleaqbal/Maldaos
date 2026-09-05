@@ -40,10 +40,17 @@ export const HealthScoreCard: React.FC<HealthScoreCardProps> = ({ healthScore })
           label: 'Critical Backlog Alert',
           className: 'bg-rose-50 text-rose-900 border-rose-300',
         };
+      case 'INSUFFICIENT_DATA':
+      default:
+        return {
+          label: 'Insufficient Telemetry',
+          className: 'bg-warm-100 text-ink-muted border-warm-300',
+        };
     }
   };
 
   const badge = getStatusBadge();
+  const isInsufficient = statusLabel === 'INSUFFICIENT_DATA';
 
   return (
     <div className="rounded-lg border border-warm-300 bg-white p-5 sm:p-6 shadow-card relative overflow-hidden">
@@ -58,7 +65,7 @@ export const HealthScoreCard: React.FC<HealthScoreCardProps> = ({ healthScore })
             <h3 className="font-serif font-semibold text-lg text-ink">Campus Health Score</h3>
           </div>
           <p className="text-xs text-ink-muted">
-            Trailing {trailingDays}-day operational infrastructure stability metric
+            Heuristic operational infrastructure stability metric based on live records
           </p>
         </div>
 
@@ -73,16 +80,15 @@ export const HealthScoreCard: React.FC<HealthScoreCardProps> = ({ healthScore })
         <div className="md:col-span-4 flex flex-col items-center justify-center p-4 bg-warm-100 rounded-lg border border-warm-200 text-center">
           <div className="flex items-baseline gap-1">
             <span className="font-serif text-5xl sm:text-6xl font-bold text-maroon-900 tracking-tight">
-              {overall}
+              {isInsufficient ? '—' : overall}
             </span>
             <span className="text-base sm:text-lg text-ink-muted font-medium">/ 100</span>
           </div>
           <span className="text-xs uppercase tracking-wider font-semibold text-maroon-800 mt-1">
-            Composite Health Index
+            {isInsufficient ? 'No Live Incidents' : 'Composite Health Index'}
           </span>
-          <div className="flex items-center gap-1 text-[11px] text-emerald-800 mt-2">
-            <TrendingUp className="w-3 h-3" />
-            <span>+3.4 pts vs previous fortnight</span>
+          <div className="flex items-center gap-1 text-[11px] text-maroon-800 mt-2 font-mono">
+            <span>{isInsufficient ? 'Awaiting incident telemetry' : `${resolutionPerformance}% overall resolution throughput`}</span>
           </div>
         </div>
 
@@ -100,7 +106,7 @@ export const HealthScoreCard: React.FC<HealthScoreCardProps> = ({ healthScore })
                 style={{ width: `${resolutionPerformance}%` }}
               />
             </div>
-            <span className="text-[10px] text-ink-muted">Ratio of verified closures within target SLA</span>
+            <span className="text-[10px] text-ink-muted">Ratio of verified closures to total recorded tickets</span>
           </div>
 
           {/* Component 2: Open Issue Load */}

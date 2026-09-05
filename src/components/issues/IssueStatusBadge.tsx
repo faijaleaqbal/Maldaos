@@ -34,11 +34,12 @@ export const IssueStatusBadge: React.FC<IssueStatusBadgeProps> = ({ status, size
       );
     case 'IN_PROGRESS':
       return (
-        <Badge variant="maroon" size={size}>
-          <Wrench className="w-3 h-3 animate-spin" style={{ animationDuration: '4s' }} />
+        <Badge variant="maroon" size={size} className="bg-blue-50 text-blue-900 border-blue-200">
+          <Wrench className="w-3 h-3 text-blue-700" />
           <span>In Progress</span>
         </Badge>
       );
+
     case 'RESOLUTION_SUBMITTED':
       return (
         <Badge variant="gold" size={size}>

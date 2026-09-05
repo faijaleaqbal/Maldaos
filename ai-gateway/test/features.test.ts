@@ -63,6 +63,23 @@ test("analyzeIssue validates against schema", async () => {
   const r = await Features.analyzeIssue(mockGateway(() => ok({ category: "infrastructure", severity: "high", priority: "P2", summary: "Leak", confidence: 0.9, reasoning: "Active leak" })), { title: "Ceiling leak", description: "Water everywhere" });
   assert.equal(r.fallback, false); assert.equal(r.analysis.category, "infrastructure"); assert.equal(r.analysis.severity, "high");
 });
+test("analyzeIssue parses REAL provider output (data is a JSON string, not an object)", async () => {
+  // F-3 regression: OpenAICompatibleProvider.invoke returns assistant content
+  // as a STRING in AIResponse.data. Previously the code did
+  // validate(schema, JSON.stringify(r.data)) which double-encoded the string
+  // and always failed — silently discarding genuine provider successes.
+  const payload = JSON.stringify({ category: "plumbing", severity: "high", priority: "P1", summary: "Ceiling leak near switches", confidence: 0.9, reasoning: "Water + electrical" });
+  const r = await Features.analyzeIssue(mockGateway(() => ({ data: payload as any, raw: payload, provider: "groq" as const, model: "openai/gpt-oss-20b", latencyMs: 1, confidence: 0.9, validated: true })), { title: "Ceiling leak", description: "Water dripping" });
+  assert.equal(r.fallback, false);
+  assert.equal(r.provider, "groq");
+  assert.equal(r.analysis.category, "plumbing");
+  assert.equal(r.analysis.priority, "P1");
+  assert.ok(r.analysis.confidence > 0);
+});
+test("analyzeIssue still falls back when provider output is invalid JSON string", async () => {
+  const r = await Features.analyzeIssue(mockGateway(() => ({ data: "not json at all" as any, raw: "not json at all", provider: "groq" as const, model: "stub", latencyMs: 1, confidence: 0.5, validated: false })), { title: "x" });
+  assert.equal(r.fallback, true); assert.equal(r.analysis.confidence, 0);
+});
 test("analyzeIssue returns fallback on validation failure", async () => {
   const r = await Features.analyzeIssue(mockGateway(() => ok({ category: "spaceship" })), { title: "x" });
   assert.equal(r.fallback, true); assert.equal(r.analysis.summary, "AI analysis unavailable.");

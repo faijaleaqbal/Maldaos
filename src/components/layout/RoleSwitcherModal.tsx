@@ -3,6 +3,7 @@
 import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/types';
+import { isDevSeedLoginAvailable } from '@/services/devSeedAccounts';
 import { X, Check, GraduationCap, Wrench, Building2, Shield } from 'lucide-react';
 
 interface RoleSwitcherModalProps {
@@ -13,7 +14,56 @@ interface RoleSwitcherModalProps {
 export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({ isOpen, onClose }) => {
   const { user, role, switchRole, mockUsers } = useAuth();
 
-  if (!isOpen) return null;
+  const modalRef = React.useRef<HTMLDivElement>(null);
+  const closeBtnRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const timer = setTimeout(() => {
+      closeBtnRef.current?.focus();
+    }, 50);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab') {
+        const container = modalRef.current;
+        if (!container) return;
+        const focusables = container.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first || !container.contains(document.activeElement)) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last || !container.contains(document.activeElement)) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleKeyDown);
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+        previouslyFocused.focus();
+      }
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !isDevSeedLoginAvailable()) return null;
 
   const personas = [
     {
@@ -64,31 +114,41 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({ isOpen, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg bg-white rounded-xl border border-warm-300 shadow-2xl overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="role-switcher-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+    >
+      <div ref={modalRef} className="w-full max-w-lg bg-white rounded-xl border border-warm-300 shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-5 bg-maroon-900 text-white flex items-center justify-between">
           <div>
             <span className="text-[11px] font-mono text-gold-300 uppercase tracking-wider block">
-              Hackathon 2027 Evaluator Tool
+              Malda College Evaluator Tool
             </span>
-            <h3 className="font-serif font-semibold text-lg text-white">
+            <h3 id="role-switcher-title" className="font-serif font-semibold text-lg text-white">
               Switch User Role & Persona
             </h3>
           </div>
           <button
+            ref={closeBtnRef}
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer"
+            aria-label="Close role switcher dialog"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
         {/* Persona Options */}
         <div className="p-4 sm:p-5 space-y-3 max-h-[70vh] overflow-y-auto">
           <p className="text-xs text-ink-muted leading-relaxed">
-            Easily experience CampusPulse from different institutional perspectives:
+            Easily experience MaldaOS from different institutional perspectives:
           </p>
 
           {personas.map((p) => {
@@ -98,8 +158,17 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({ isOpen, on
             return (
               <div
                 key={p.role}
+                role="button"
+                tabIndex={0}
+                aria-label={`Switch persona to ${p.title} (${p.persona})${isCurrent ? ', currently active' : ''}`}
                 onClick={() => handleSelect(p.role)}
-                className={`p-3.5 rounded-lg border text-left cursor-pointer transition-all ${
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSelect(p.role);
+                  }
+                }}
+                className={`p-3.5 rounded-lg border text-left cursor-pointer transition-all touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700 ${
                   isCurrent
                     ? 'border-maroon-700 bg-maroon-50/70 ring-2 ring-maroon-700/20'
                     : 'border-warm-300 hover:border-maroon-400 hover:bg-warm-50'

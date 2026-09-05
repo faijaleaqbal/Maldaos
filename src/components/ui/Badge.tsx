@@ -21,7 +21,7 @@ export const Badge: React.FC<BadgeProps> = ({
     maroon: 'bg-maroon-50 text-maroon-900 border-maroon-200',
     gold: 'bg-gold-50 text-gold-900 border-gold-300 font-medium',
     outline: 'bg-transparent text-ink-muted border-warm-300',
-    ai: 'bg-ai-50 text-ai-700 border-ai-border font-medium',
+    ai: 'bg-ai-100 text-ai-800 border-ai-300 font-medium',
     success: 'bg-emerald-50 text-emerald-800 border-emerald-200',
     warning: 'bg-amber-50 text-amber-900 border-amber-200',
     danger: 'bg-rose-50 text-rose-800 border-rose-200',
@@ -33,12 +33,13 @@ export const Badge: React.FC<BadgeProps> = ({
     maroon: 'bg-maroon-700',
     gold: 'bg-gold-600',
     outline: 'bg-ink-muted',
-    ai: 'bg-ai-600',
+    ai: 'bg-ai-700',
     success: 'bg-emerald-600',
     warning: 'bg-amber-600',
     danger: 'bg-rose-600',
     muted: 'bg-ink-muted',
   };
+
 
   const sizes = {
     sm: 'text-xs px-2 py-0.5',

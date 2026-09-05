@@ -62,8 +62,12 @@ export default function AnalyticsPage() {
 
         <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
           <span className="text-xs text-ink-muted uppercase font-semibold block mb-1">Composite Health Index</span>
-          <span className="font-mono text-2xl font-bold text-gold-900">{summary.campusHealth.overall} / 100</span>
-          <span className="text-[11px] text-ink-muted block mt-1">Computed from active workload & velocity</span>
+          <span className="font-mono text-2xl font-bold text-gold-900">
+            {summary.campusHealth.statusLabel === 'INSUFFICIENT_DATA' ? 'N/A' : `${summary.campusHealth.overall} / 100`}
+          </span>
+          <span className="text-[11px] text-ink-muted block mt-1">
+            {summary.campusHealth.statusLabel === 'INSUFFICIENT_DATA' ? 'No incident telemetry logged' : 'Computed from active workload & velocity'}
+          </span>
         </div>
       </div>
 

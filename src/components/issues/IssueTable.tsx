@@ -12,7 +12,6 @@ import {
   ChevronUp,
   ChevronDown,
   UserCheck,
-  Sparkles,
   ArrowUpDown,
 } from 'lucide-react';
 
@@ -85,43 +84,63 @@ export const IssueTable: React.FC<IssueTableProps> = ({
       <div className="block sm:hidden px-3 py-1.5 bg-warm-50 border-b border-warm-200 text-[11px] text-ink-muted flex items-center justify-between">
         <span>Scroll horizontally to inspect full work order details →</span>
       </div>
-      <div className="overflow-x-auto">
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Campus work order queue table"
+        className="overflow-x-auto focus-visible:ring-2 focus-visible:ring-maroon-700 focus-visible:outline-none"
+      >
         <table className="w-full text-left border-collapse text-xs sm:text-sm">
           <thead>
             <tr className="border-b border-warm-300 bg-warm-100/90 text-ink-muted text-[11px] font-semibold uppercase tracking-wider">
               <th
-                className="py-3 px-3.5 cursor-pointer hover:text-maroon-800 select-none"
-                onClick={() => toggleSort('ticket')}
+                scope="col"
+                aria-sort={sortField === 'ticket' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
+                className="py-2.5 px-3.5"
               >
-                <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('ticket')}
+                  className="flex items-center gap-1 hover:text-maroon-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700 rounded py-1 px-0.5"
+                >
                   <span>Ticket</span>
-                  <ArrowUpDown className="w-3 h-3" />
-                </div>
+                  <ArrowUpDown className="w-3 h-3" aria-hidden="true" />
+                </button>
               </th>
-              <th className="py-3 px-3.5">Issue Description</th>
-              <th className="py-3 px-3.5 hidden md:table-cell">Location</th>
+              <th scope="col" className="py-3 px-3.5">Issue Description</th>
+              <th scope="col" className="py-3 px-3.5 hidden md:table-cell">Location</th>
               <th
-                className="py-3 px-3.5 cursor-pointer hover:text-maroon-800 select-none"
-                onClick={() => toggleSort('priority')}
+                scope="col"
+                aria-sort={sortField === 'priority' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
+                className="py-2.5 px-3.5"
               >
-                <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('priority')}
+                  className="flex items-center gap-1 hover:text-maroon-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700 rounded py-1 px-0.5"
+                >
                   <span>Priority</span>
-                  <ArrowUpDown className="w-3 h-3" />
-                </div>
+                  <ArrowUpDown className="w-3 h-3" aria-hidden="true" />
+                </button>
               </th>
-              <th className="py-3 px-3.5 hidden lg:table-cell">Department</th>
-              <th className="py-3 px-3.5">Status</th>
+              <th scope="col" className="py-3 px-3.5 hidden lg:table-cell">Department</th>
+              <th scope="col" className="py-3 px-3.5">Status</th>
               <th
-                className="py-3 px-3.5 cursor-pointer hover:text-maroon-800 select-none hidden sm:table-cell"
-                onClick={() => toggleSort('age')}
+                scope="col"
+                aria-sort={sortField === 'age' ? (sortAsc ? 'ascending' : 'descending') : 'none'}
+                className="py-2.5 px-3.5 hidden sm:table-cell"
               >
-                <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('age')}
+                  className="flex items-center gap-1 hover:text-maroon-800 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700 rounded py-1 px-0.5"
+                >
                   <span>Age</span>
-                  <ArrowUpDown className="w-3 h-3" />
-                </div>
+                  <ArrowUpDown className="w-3 h-3" aria-hidden="true" />
+                </button>
               </th>
-              <th className="py-3 px-3.5 hidden xl:table-cell">Assigned Staff</th>
-              <th className="py-3 px-3.5 text-right">Actions</th>
+              <th scope="col" className="py-3 px-3.5 hidden xl:table-cell">Assigned Staff</th>
+              <th scope="col" className="py-3 px-3.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-warm-200">
@@ -139,7 +158,7 @@ export const IssueTable: React.FC<IssueTableProps> = ({
                   <td className="py-3 px-3.5 font-mono text-xs font-semibold text-ink whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
                       {isCritical && (
-                        <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping shrink-0" />
+                        <span className="w-2 h-2 rounded-full bg-rose-600 shrink-0" title="High Urgency Work Order" />
                       )}
                       <Link
                         href={`/issues/${issue.id}`}
@@ -153,18 +172,19 @@ export const IssueTable: React.FC<IssueTableProps> = ({
                   {/* Issue title */}
                   <td className="py-3 px-3.5 max-w-[260px] sm:max-w-[320px]">
                     <div className="space-y-0.5">
-                      <span
+                      <button
+                        type="button"
                         onClick={() => onOpenQuickView && onOpenQuickView(issue)}
-                        className="font-medium text-ink hover:text-maroon-800 cursor-pointer line-clamp-1 leading-snug"
+                        className="font-medium text-ink hover:text-maroon-800 cursor-pointer line-clamp-1 leading-snug text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-maroon-700 rounded"
+                        aria-label={`Inspect work order details for ${issue.ticketNumber}: ${issue.title}`}
                       >
                         {issue.title}
-                      </span>
+                      </button>
                       <div className="flex items-center gap-2 text-[11px] text-ink-muted">
                         <span>{issue.category.replace('_', ' ')}</span>
                         {issue.aiAnalysis && !issue.aiAnalysis.isFallback && (
-                          <span className="inline-flex items-center gap-0.5 text-ai-700 bg-ai-50 px-1 rounded text-[10px]">
-                            <Sparkles className="w-2.5 h-2.5" />
-                            AI
+                          <span className="inline-flex items-center text-ink-muted bg-warm-100 border border-warm-200 px-1.5 py-0.2 rounded font-mono text-[10px]" title="Technical Advisory Recorded">
+                            Advisory
                           </span>
                         )}
                       </div>
@@ -174,7 +194,7 @@ export const IssueTable: React.FC<IssueTableProps> = ({
                   {/* Location */}
                   <td className="py-3 px-3.5 hidden md:table-cell max-w-[180px]">
                     <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-                      <MapPin className="w-3 h-3 text-maroon-700 shrink-0" />
+                      <MapPin className="w-3 h-3 text-maroon-700 shrink-0" aria-hidden="true" />
                       <span className="truncate" title={`${issue.location.building} - ${issue.location.roomOrLandmark}`}>
                         {issue.location.building.split('(')[0]}
                       </span>
@@ -214,9 +234,10 @@ export const IssueTable: React.FC<IssueTableProps> = ({
                       <button
                         type="button"
                         onClick={() => onAssignClick && onAssignClick(issue)}
-                        className="text-amber-800 hover:text-amber-950 font-medium text-xs flex items-center gap-1 p-1 hover:bg-amber-50 rounded"
+                        aria-label={`Assign staff to work order ${issue.ticketNumber}`}
+                        className="text-amber-800 hover:text-amber-950 font-medium text-xs flex items-center gap-1 p-1.5 min-h-[36px] hover:bg-amber-50 rounded touch-manipulation focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-700"
                       >
-                        <UserCheck className="w-3.5 h-3.5" />
+                        <UserCheck className="w-3.5 h-3.5" aria-hidden="true" />
                         <span>Unassigned</span>
                       </button>
                     )}
@@ -230,14 +251,15 @@ export const IssueTable: React.FC<IssueTableProps> = ({
                           size="sm"
                           variant="secondary"
                           onClick={() => onOpenQuickView(issue)}
-                          className="h-8 text-xs px-2.5"
+                          className="h-8 text-xs px-2.5 touch-manipulation"
+                          aria-label={`Inspect work order ${issue.ticketNumber}`}
                         >
                           Inspect
                         </Button>
                       )}
                       <Link href={`/issues/${issue.id}`}>
-                        <Button size="sm" variant="outline" className="h-8 text-xs px-2" title="Full ticket view" aria-label={`View full ticket for ${issue.ticketNumber}`}>
-                          <ExternalLink className="w-3.5 h-3.5" />
+                        <Button size="sm" variant="outline" className="h-8 text-xs px-2 touch-manipulation" title="Full ticket view" aria-label={`View full ticket for ${issue.ticketNumber}`}>
+                          <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                         </Button>
                       </Link>
                     </div>

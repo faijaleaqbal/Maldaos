@@ -72,7 +72,7 @@ export default function LoginPage() {
             Malda College Digital Access
           </span>
           <h1 className="font-serif font-bold text-2xl sm:text-3xl text-ink">
-            Sign in to CampusPulse
+            Sign in to MaldaOS
           </h1>
           <p className="text-xs text-ink-muted">
             Access your campus incident reporting desk or administrative operations console

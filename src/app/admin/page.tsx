@@ -20,7 +20,6 @@ import {
   Compass,
   Clock,
   CheckCircle2,
-  Sparkles,
   Layers,
   Wrench,
   AlertCircle,
@@ -43,6 +42,9 @@ export default function AdminDashboardPage() {
   const unassignedIssues = issues.filter(
     (i) => !i.assignedTo && i.status !== 'RESOLVED' && i.status !== 'CLOSED'
   );
+  const resolvedIssues = issues.filter(
+    (i) => i.status === 'RESOLVED' || i.status === 'CLOSED'
+  );
 
   const openDrawer = (issue: Issue) => {
     setActiveDrawerIssue(issue);
@@ -55,7 +57,7 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-warm-300 pb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 ring-2 ring-emerald-600/20 shrink-0" aria-hidden="true" />
             <span className="font-mono text-xs font-bold text-maroon-900 uppercase tracking-widest">
               Malda College Central Infrastructure Console
             </span>
@@ -158,8 +160,17 @@ export default function AdminDashboardPage() {
               {criticalIssues.map((crit) => (
                 <div
                   key={crit.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open work order ${crit.ticketNumber}: ${crit.title}`}
                   onClick={() => openDrawer(crit)}
-                  className="p-3 bg-white rounded-lg border border-rose-200 shadow-subtle hover:border-rose-400 cursor-pointer space-y-1 transition-colors"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      openDrawer(crit);
+                    }
+                  }}
+                  className="p-3 bg-white rounded-lg border border-rose-200 shadow-subtle hover:border-rose-400 cursor-pointer space-y-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-700"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs font-bold text-rose-900">{crit.ticketNumber}</span>
@@ -198,7 +209,10 @@ export default function AdminDashboardPage() {
                 <span className="font-mono font-bold text-maroon-900">{summary.averageResolutionHours} Hours</span>
               </div>
               <div className="h-2 w-full bg-warm-200 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-600 rounded-full" style={{ width: '84%' }} />
+                <div
+                  className="h-full bg-emerald-600 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, summary.resolutionRate))}%` }}
+                />
               </div>
             </div>
 
@@ -209,8 +223,8 @@ export default function AdminDashboardPage() {
                 <span className="font-mono font-semibold">{inProgressIssues.length} assigned</span>
               </div>
               <div className="flex items-center justify-between text-ink">
-                <span>Verified Closures Today</span>
-                <span className="font-mono font-semibold text-emerald-700">3 completed</span>
+                <span>Verified Closures to Date</span>
+                <span className="font-mono font-semibold text-emerald-700">{resolvedIssues.length} completed</span>
               </div>
             </div>
           </div>
@@ -256,8 +270,17 @@ export default function AdminDashboardPage() {
             {issues.slice(0, 5).map((iss) => (
               <div
                 key={iss.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Inspect ticket ${iss.ticketNumber}: ${iss.title}`}
                 onClick={() => openDrawer(iss)}
-                className="p-3.5 hover:bg-warm-50 transition-colors cursor-pointer space-y-1.5"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openDrawer(iss);
+                  }
+                }}
+                className="p-3.5 hover:bg-warm-50 transition-colors cursor-pointer space-y-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700"
               >
                 <div className="flex items-center justify-between gap-1">
                   <span className="font-mono text-xs font-semibold text-maroon-900 bg-maroon-50 px-1.5 py-0.2 rounded">

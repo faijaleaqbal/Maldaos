@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { isMockModeEnabled, setMockMode, isSupabaseConfigured } from '@/lib/supabase';
+import { isDevSeedLoginAvailable } from '@/services/devSeedAccounts';
 import { useIssues } from '@/context/IssuesContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -10,11 +11,12 @@ import {
   Database,
   Cpu,
   Clock,
-  Shield,
   RefreshCw,
   CheckCircle,
   AlertTriangle,
 } from 'lucide-react';
+
+const SLA_STORAGE_KEY = 'campuspulse_admin_sla_targets';
 
 export default function SettingsPage() {
   const { resetData } = useIssues();
@@ -27,6 +29,23 @@ export default function SettingsPage() {
   const [slaMedium, setSlaMedium] = useState('24');
   const [slaLow, setSlaLow] = useState('72');
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(SLA_STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.critical) setSlaCritical(parsed.critical);
+          if (parsed.high) setSlaHigh(parsed.high);
+          if (parsed.medium) setSlaMedium(parsed.medium);
+          if (parsed.low) setSlaLow(parsed.low);
+        } catch (e) {
+          // fallback
+        }
+      }
+    }
+  }, []);
+
   const handleToggleMock = () => {
     const next = !isMock;
     setIsMock(next);
@@ -35,6 +54,17 @@ export default function SettingsPage() {
 
   const handleSaveSLA = (e: React.FormEvent) => {
     e.preventDefault();
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        SLA_STORAGE_KEY,
+        JSON.stringify({
+          critical: slaCritical,
+          high: slaHigh,
+          medium: slaMedium,
+          low: slaLow,
+        })
+      );
+    }
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
   };
@@ -75,7 +105,7 @@ export default function SettingsPage() {
 
         <div className="space-y-2 text-xs sm:text-sm text-ink-muted leading-relaxed">
           <p>
-            CampusPulse is designed with clean service abstraction boundaries. Frontend state is isolated from backend dependencies:
+            MaldaOS is designed with clean service abstraction boundaries. Frontend state is isolated from backend dependencies:
           </p>
           <div className="p-3 bg-warm-50 rounded border border-warm-200 font-mono text-xs space-y-1">
             <div>Supabase URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Configured (Env)' : 'Local Mock Simulated'}</div>
@@ -84,19 +114,21 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          <Button size="sm" variant="primary" onClick={handleToggleMock}>
-            Switch to {isMock ? 'Supabase Live Mode' : 'Local Mock Mode'}
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => resetData()}
-            leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-          >
-            Restore Default Malda College Incidents
-          </Button>
-        </div>
+        {isDevSeedLoginAvailable() && (
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <Button size="sm" variant="primary" onClick={handleToggleMock}>
+              Switch to {isMock ? 'Supabase Live Mode' : 'Local Mock Mode'}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => resetData()}
+              leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+            >
+              Restore Default Malda College Incidents
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Section 2: AI Gateway Policy */}
@@ -170,7 +202,7 @@ export default function SettingsPage() {
                 <CheckCircle className="w-4 h-4" /> SLA Targets Updated Successfully!
               </span>
             ) : (
-              <span className="text-xs text-ink-muted">Used in Campus Health Score computation</span>
+              <span className="text-xs text-ink-muted">Operational guidelines for department response times</span>
             )}
             <Button type="submit" size="sm" variant="primary">
               Save SLA Parameters

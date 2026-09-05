@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useIssues } from '@/context/IssuesContext';
 import { Issue } from '@/types';
-import { IssuesService } from '@/services/issues.service';
+import { IssuesService, DepartmentOption } from '@/services/issues.service';
 import { AssignmentDrawer } from '@/components/admin/AssignmentDrawer';
 import { PriorityBadge } from '@/components/issues/PriorityBadge';
 import { LoadingState } from '@/components/common/LoadingState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Phone, Users, Shield, UserCheck, Wrench } from 'lucide-react';
+import { Phone, Users, Shield, UserCheck, Wrench, Search, Filter } from 'lucide-react';
 
 interface StaffProfile {
   id: string;
@@ -23,20 +23,28 @@ interface StaffProfile {
 export default function AssignmentsPage() {
   const { issues } = useIssues();
   const [staffList, setStaffList] = useState<StaffProfile[]>([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDept, setSelectedDept] = useState('ALL');
+
   useEffect(() => {
     let cancelled = false;
-    async function loadStaff() {
+    async function loadData() {
       try {
         setLoading(true);
         setError(null);
-        const data = await IssuesService.getAllStaff();
+        const [staff, depts] = await Promise.all([
+          IssuesService.getAllStaff(),
+          IssuesService.getDepartments(),
+        ]);
         if (!cancelled) {
-          setStaffList(data);
+          setStaffList(staff);
+          setDepartments(depts);
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -47,7 +55,7 @@ export default function AssignmentsPage() {
         if (!cancelled) setLoading(false);
       }
     }
-    loadStaff();
+    loadData();
     return () => {
       cancelled = true;
     };
@@ -58,8 +66,35 @@ export default function AssignmentsPage() {
     setIsDrawerOpen(true);
   };
 
+  const filteredStaff = useMemo(() => {
+    return staffList.filter((s) => {
+      if (selectedDept !== 'ALL') {
+        if (s.department_id !== selectedDept && s.department_name !== selectedDept) {
+          return false;
+        }
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = s.full_name.toLowerCase().includes(q);
+        const matchDept = (s.department_name || '').toLowerCase().includes(q);
+        const matchPhone = (s.phone || '').toLowerCase().includes(q);
+        if (!matchName && !matchDept && !matchPhone) return false;
+      }
+      return true;
+    });
+  }, [staffList, selectedDept, searchQuery]);
+
+  const unassignedCount = issues.filter(
+    (i) => !i.assignedTo && i.status !== 'RESOLVED' && i.status !== 'CLOSED'
+  ).length;
+
+  const totalAssignedCount = issues.filter(
+    (i) => i.assignedTo && i.status !== 'RESOLVED' && i.status !== 'CLOSED'
+  ).length;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Header */}
       <div className="border-b border-warm-300 pb-4">
         <div className="flex items-center gap-2 mb-1">
           <Users className="w-4 h-4 text-maroon-700" />
@@ -75,6 +110,70 @@ export default function AssignmentsPage() {
         </p>
       </div>
 
+      {/* Capacity Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
+          <span className="text-xs text-ink-muted uppercase font-semibold block mb-1">
+            Registered Duty Personnel
+          </span>
+          <span className="font-mono text-2xl font-bold text-ink">{staffList.length} Staff</span>
+          <span className="text-[11px] text-ink-muted block mt-1">
+            Technicians & Department Admins
+          </span>
+        </div>
+        <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
+          <span className="text-xs text-ink-muted uppercase font-semibold block mb-1">
+            In-Flight Assigned Work Orders
+          </span>
+          <span className="font-mono text-2xl font-bold text-emerald-800">
+            {totalAssignedCount} Orders
+          </span>
+          <span className="text-[11px] text-emerald-900 block mt-1">
+            Currently in technician custody
+          </span>
+        </div>
+        <div className="p-4 bg-white rounded-xl border border-warm-300 shadow-card">
+          <span className="text-xs text-ink-muted uppercase font-semibold block mb-1">
+            Unassigned Incident Queue
+          </span>
+          <span className="font-mono text-2xl font-bold text-amber-800">
+            {unassignedCount} Pending
+          </span>
+          <span className="text-[11px] text-amber-900 block mt-1">
+            Awaiting administrator dispatch
+          </span>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="rounded-lg border border-warm-300 bg-white p-4 shadow-subtle flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative flex-1 w-full">
+          <Search className="w-4 h-4 text-ink-muted absolute left-3 top-2.5" />
+          <input
+            type="text"
+            placeholder="Search by staff name, department, or phone number..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-md border border-warm-300 focus:outline-none focus:border-maroon-700 focus:ring-1 focus:ring-maroon-700"
+          />
+        </div>
+
+        <div className="w-full sm:w-auto">
+          <select
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+            className="w-full sm:w-auto p-2 text-xs rounded border border-warm-300 bg-white text-ink focus:outline-none focus:border-maroon-700"
+          >
+            <option value="ALL">All Departments ({staffList.length} staff)</option>
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.id}>
+                {dept.name} ({dept.code})
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {loading ? (
         <LoadingState message="Loading authenticated staff directory..." />
       ) : error ? (
@@ -83,15 +182,20 @@ export default function AssignmentsPage() {
           message={error}
           onRetry={() => window.location.reload()}
         />
-      ) : staffList.length === 0 ? (
+      ) : filteredStaff.length === 0 ? (
         <EmptyState
-          title="No Staff Personnel Registered"
-          description="No active staff or department administrators were found in the database directory."
+          title="No Staff Personnel Found"
+          description="No active staff or department administrators matched the search criteria."
+          actionLabel="Reset Search"
+          onAction={() => {
+            setSearchQuery('');
+            setSelectedDept('ALL');
+          }}
         />
       ) : (
         /* Real Staff Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {staffList.map((staff) => {
+          {filteredStaff.map((staff) => {
             // Issues assigned to this technician (match by ID or full name)
             const staffTickets = issues.filter(
               (i) =>
@@ -104,6 +208,13 @@ export default function AssignmentsPage() {
                 (i.assignedTo?.id === staff.id || i.assignedTo?.name === staff.full_name) &&
                 (i.status === 'RESOLVED' || i.status === 'CLOSED')
             );
+
+            const loadLevel =
+              staffTickets.length >= 4
+                ? { label: 'High Load', color: 'bg-amber-100 text-amber-900 border-amber-300' }
+                : staffTickets.length > 0
+                ? { label: 'Active', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' }
+                : { label: 'Available', color: 'bg-warm-100 text-ink border-warm-300' };
 
             return (
               <div
@@ -125,8 +236,8 @@ export default function AssignmentsPage() {
                     </div>
                   </div>
 
-                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded">
-                    Active Duty
+                  <span className={`text-[10px] font-semibold border px-2 py-0.5 rounded ${loadLevel.color}`}>
+                    {loadLevel.label}
                   </span>
                 </div>
 

@@ -46,21 +46,21 @@ const config: Config = {
           500: "#BFB29C",
           600: "#A3947D",
         },
-        // Restrained AI Accent - used ONLY inside AI elements
+        // Restrained Diagnostic / Technical Assessment Tokens (Non-SaaS, Institutional)
         ai: {
-          50: "#F5F3FF",
-          100: "#EDE9FE",
-          200: "#DDD6FE",
-          300: "#C4B5FD",
-          400: "#A78BFA",
-          500: "#8B5CF6",
-          600: "#6D28D9",
-          700: "#5B21B6",
-          800: "#4C1D95",
-          900: "#3B0764",
-          surface: "#FAF8FF",
-          border: "#E0D7FE",
-          text: "#5239A0",
+          50: "#F8FAFC",
+          100: "#F1F5F9",
+          200: "#E2E8F0",
+          300: "#CBD5E1",
+          400: "#94A3B8",
+          500: "#64748B",
+          600: "#475569",
+          700: "#334155",
+          800: "#1E293B",
+          900: "#0F172A",
+          surface: "#F8FAFC",
+          border: "#D1D5DB",
+          text: "#1E293B",
         },
         // Semantic Application Tokens
         surface: {
@@ -71,10 +71,10 @@ const config: Config = {
           borderStrong: "#CEC5B7",
         },
         ink: {
-          DEFAULT: "#171717", // Near Black
-          muted: "#6B6870",   // Muted
-          soft: "#8E8A94",
-          faint: "#B8B5BE",
+          DEFAULT: "#171717", // Deep Ink Black
+          muted: "#52525B",   // Neutral Charcoal
+          soft: "#71717A",
+          faint: "#A1A1AA",
         },
         status: {
           open: "#B45309",
@@ -96,20 +96,21 @@ const config: Config = {
         mono: ["var(--font-mono)", "Menlo", "Courier New", "monospace"],
       },
       boxShadow: {
-        subtle: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)",
-        card: "0 2px 6px -1px rgba(122, 31, 43, 0.06), 0 1px 4px -1px rgba(0, 0, 0, 0.04)",
-        elevated: "0 10px 25px -5px rgba(84, 19, 29, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
+        subtle: "0 1px 2px 0 rgba(0, 0, 0, 0.04)",
+        card: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)",
+        elevated: "0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
       },
       borderRadius: {
-        DEFAULT: "6px",
-        md: "8px",
-        lg: "10px",
-        xl: "12px",
+        DEFAULT: "4px",
+        sm: "4px",
+        md: "6px",
+        lg: "8px",
+        xl: "8px",
       },
       keyframes: {
         "pulse-subtle": {
           "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.6" },
+          "50%": { opacity: "0.7" },
         },
       },
       animation: {
