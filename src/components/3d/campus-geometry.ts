@@ -14,12 +14,14 @@ export interface BuildingNode {
   size: THREE.Vector3;
   group: THREE.Group;
   meshForRaycast: THREE.Mesh;
+  labelSprite?: THREE.Sprite;
 }
 
 export interface CampusSceneGraph {
   root: THREE.Group;
   buildings: Map<string, BuildingNode>;
   buildingNodes: BuildingNode[];
+  buildingLabels: THREE.Sprite[];
   lampGlows: THREE.Sprite[];
   flagMesh?: THREE.Mesh;
   pathMesh: THREE.Mesh;
@@ -521,31 +523,110 @@ function buildCollegeGround(m: CampusMaterials): { group: THREE.Group; hitbox: T
   const grp = new THREE.Group();
 
   // Athletic Green Turf
-  const turfGeom = new THREE.PlaneGeometry(42, 28);
+  const turfGeom = new THREE.PlaneGeometry(54, 38);
   turfGeom.rotateX(-Math.PI / 2);
   const turf = new THREE.Mesh(turfGeom, m.athleticTurf);
   turf.position.set(0, 0.04, 0);
   turf.receiveShadow = true;
   grp.add(turf);
 
-  // Running track outer boundary line
-  const trackGeom = new THREE.RingGeometry(18, 20, 32);
+  // Cricket pitch strip in the middle
+  const pitchGeom = new THREE.PlaneGeometry(3.6, 20);
+  pitchGeom.rotateX(-Math.PI / 2);
+  const pitch = new THREE.Mesh(pitchGeom, m.cricketPitch);
+  pitch.position.set(0, 0.05, 0);
+  pitch.receiveShadow = true;
+  grp.add(pitch);
+
+  // Running track outer boundary oval
+  const trackGeom = new THREE.RingGeometry(24, 27, 36);
   trackGeom.rotateX(-Math.PI / 2);
   const track = new THREE.Mesh(trackGeom, m.asphaltPath);
-  track.position.set(0, 0.03, 0);
-  track.scale.set(1.1, 0.7, 1);
+  track.position.set(0, 0.035, 0);
+  track.scale.set(1.08, 0.74, 1);
   grp.add(track);
 
-  // Sports Pavilion stand
-  const stand = createBox(16, 2.5, 4, m.concreteBase, 0, 0, 13);
-  const standRoof = createBox(17, 0.3, 4.5, m.roofTile, 0, 2.6, 13);
-  grp.add(stand, standRoof);
+  // Sports Pavilion grandstand (North side of the field)
+  const stand = createBox(22, 3.2, 5.2, m.concreteBase, 0, 0, -17);
+  const standRoof = createBox(24, 0.4, 6.0, m.roofTile, 0, 3.4, -17);
+  // Tiered spectator seating
+  const seat1 = createBox(20, 0.6, 1.4, m.stoneTrim, 0, 0.6, -15.1);
+  const seat2 = createBox(20, 0.6, 1.4, m.stoneTrim, 0, 1.2, -16.4);
+  grp.add(stand, standRoof, seat1, seat2);
+
+  // Floodlight towers on 4 corners
+  [
+    [-24, -17],
+    [24, -17],
+    [-24, 17],
+    [24, 17],
+  ].forEach(([fx, fz]) => {
+    const pMast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.22, 9, 8), m.wroughtIron);
+    pMast.position.set(fx, 4.5, fz);
+    const pLightBox = createBox(1.4, 0.7, 0.7, m.stoneTrim, fx, 9.1, fz);
+    grp.add(pMast, pLightBox);
+  });
 
   const hitbox = new THREE.Mesh(
-    new THREE.BoxGeometry(44, 4, 30),
+    new THREE.BoxGeometry(56, 10, 40),
     new THREE.MeshBasicMaterial({ visible: false })
   );
-  hitbox.position.set(0, 1, 0);
+  hitbox.position.set(0, 5, 0);
+  grp.add(hitbox);
+
+  return { group: grp, hitbox };
+}
+
+/** 12. MALDA COLLEGE MAIN GATE & ENTRANCE PORTAL (Rabindra Avenue / Old NH 81) */
+function buildMainGate(m: CampusMaterials): { group: THREE.Group; hitbox: THREE.Mesh } {
+  const grp = new THREE.Group();
+
+  // Left Gate Pillar
+  const p1 = createBox(2.4, 6.0, 2.4, m.brick, -6, 0, 0);
+  const cap1 = createBox(2.8, 0.6, 2.8, m.stoneTrim, -6, 6.0, 0);
+  const finial1 = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 12), m.brassGold);
+  finial1.position.set(-6, 6.8, 0);
+
+  // Right Gate Pillar
+  const p2 = createBox(2.4, 6.0, 2.4, m.brick, 6, 0, 0);
+  const cap2 = createBox(2.8, 0.6, 2.8, m.stoneTrim, 6, 6.0, 0);
+  const finial2 = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 12), m.brassGold);
+  finial2.position.set(6, 6.8, 0);
+
+  // Institutional Arch Over Gate
+  const archBeam = createBox(14.8, 0.9, 1.4, m.stoneTrim, 0, 5.6, 0);
+  const archBanner = createBox(10.0, 1.4, 0.3, m.gateArch, 0, 6.8, 0);
+
+  // Wrought Iron Grand Gates
+  const gateLeft = createBox(4.4, 4.2, 0.12, m.wroughtIron, -2.5, 0, 0);
+  const gateRight = createBox(4.4, 4.2, 0.12, m.wroughtIron, 2.5, 0, 0);
+
+  // Guard Security Kiosk on the side
+  const kiosk = createBox(3.6, 3.2, 3.6, m.brick, 10.5, 0, 0);
+  const kioskRoof = createBox(4.2, 0.4, 4.2, m.roofTile, 10.5, 3.2, 0);
+  const kioskWindow = createBox(1.6, 1.2, 0.1, m.windowGlass, 10.5, 1.6, 1.85);
+
+  grp.add(
+    p1,
+    cap1,
+    finial1,
+    p2,
+    cap2,
+    finial2,
+    archBeam,
+    archBanner,
+    gateLeft,
+    gateRight,
+    kiosk,
+    kioskRoof,
+    kioskWindow
+  );
+
+  const hitbox = new THREE.Mesh(
+    new THREE.BoxGeometry(26, 8, 8),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitbox.position.set(2, 4, 0);
   grp.add(hitbox);
 
   return { group: grp, hitbox };
@@ -637,25 +718,28 @@ function createFlagpole(m: CampusMaterials, x: number, z: number): { group: THRE
   finial.position.set(x, 11.4, z);
 
   // Malda College Ceremonial Maroon & Gold Flag
-  const flagCanvas = document.createElement('canvas');
-  flagCanvas.width = 128;
-  flagCanvas.height = 64;
-  const fCtx = flagCanvas.getContext('2d');
-  if (fCtx) {
-    fCtx.fillStyle = '#7A1F2B'; // Maroon
-    fCtx.fillRect(0, 0, 128, 64);
-    fCtx.fillStyle = '#D4A72C'; // Gold stripe
-    fCtx.fillRect(0, 26, 128, 12);
-    fCtx.fillStyle = '#FFFFFF';
-    fCtx.font = 'bold 10px serif';
-    fCtx.fillText('MC 1944', 36, 35);
+  let flagMat: THREE.Material = m.stoneTrim;
+  if (typeof document !== 'undefined') {
+    const flagCanvas = document.createElement('canvas');
+    flagCanvas.width = 128;
+    flagCanvas.height = 64;
+    const fCtx = flagCanvas.getContext('2d');
+    if (fCtx) {
+      fCtx.fillStyle = '#7A1F2B'; // Maroon
+      fCtx.fillRect(0, 0, 128, 64);
+      fCtx.fillStyle = '#D4A72C'; // Gold stripe
+      fCtx.fillRect(0, 26, 128, 12);
+      fCtx.fillStyle = '#FFFFFF';
+      fCtx.font = 'bold 10px serif';
+      fCtx.fillText('MC 1944', 36, 35);
+    }
+    const flagTex = new THREE.CanvasTexture(flagCanvas);
+    flagMat = new THREE.MeshStandardMaterial({
+      map: flagTex,
+      side: THREE.DoubleSide,
+      roughness: 0.6,
+    });
   }
-  const flagTex = new THREE.CanvasTexture(flagCanvas);
-  const flagMat = new THREE.MeshStandardMaterial({
-    map: flagTex,
-    side: THREE.DoubleSide,
-    roughness: 0.6,
-  });
 
   const flagGeom = new THREE.PlaneGeometry(3.0, 1.8, 8, 4);
   const flag = new THREE.Mesh(flagGeom, flagMat);
@@ -666,70 +750,151 @@ function createFlagpole(m: CampusMaterials, x: number, z: number): { group: THRE
   return { group: grp, flag };
 }
 
-/** Master Campus Scene Graph Builder */
+/** 3D Floating Building Label Sprite Generator */
+function createBuildingLabelSprite(title: string, tag: string): THREE.Sprite {
+  if (typeof document === 'undefined') {
+    return new THREE.Sprite();
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = 384;
+  canvas.height = 96;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    // Dark pill container with gold border
+    ctx.fillStyle = 'rgba(25, 20, 24, 0.92)';
+    ctx.strokeStyle = '#D4A72C';
+    ctx.lineWidth = 3;
+    const x = 4, y = 4, w = 376, h = 88, r = 14;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      ctx.rect(x, y, w, h);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    // Gold subtag / code
+    ctx.fillStyle = '#D4A72C';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(tag.toUpperCase(), 192, 34);
+
+    // White bold title
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 22px serif';
+    ctx.fillText(title, 192, 68);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  const spriteMat = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+  });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.scale.set(15, 3.75, 1);
+  return sprite;
+}
+
+/** Master Campus Scene Graph Builder (Authentic Malda College Layout) */
 export function buildCampusSceneGraph(materials: CampusMaterials): CampusSceneGraph {
   const root = new THREE.Group();
   const buildings = new Map<string, BuildingNode>();
   const buildingNodes: BuildingNode[] = [];
+  const buildingLabels: THREE.Sprite[] = [];
   const lampGlows: THREE.Sprite[] = [];
 
-  // 1. Campus Ground Lawn Plane
-  const groundGeom = new THREE.PlaneGeometry(160, 160, 32, 32);
+  // 1. Campus Ground Lawn Plane (Expanded to 280 x 300 to encompass all facilities)
+  const groundGeom = new THREE.PlaneGeometry(280, 300, 32, 32);
   groundGeom.rotateX(-Math.PI / 2);
   const groundMesh = new THREE.Mesh(groundGeom, materials.campusLawn);
-  groundMesh.position.y = -0.01;
+  groundMesh.position.set(10, -0.01, 20);
   groundMesh.receiveShadow = true;
   root.add(groundMesh);
 
-  // 2. Interconnected Paved Walkways & Courtyards
+  // 2. Interconnected Paved Walkways & Road Network
   const pathGroup = new THREE.Group();
 
-  // Central Spine Road (Gate -> Central Quad -> Admin)
-  const spineGeom = new THREE.PlaneGeometry(7.0, 80);
+  // Rabindra Avenue (Old NH 81 Highway along East boundary)
+  const nhRoadGeom = new THREE.PlaneGeometry(14, 280);
+  nhRoadGeom.rotateX(-Math.PI / 2);
+  const nhRoad = new THREE.Mesh(nhRoadGeom, materials.asphaltPath);
+  nhRoad.position.set(36, 0.02, 20);
+  nhRoad.receiveShadow = true;
+  pathGroup.add(nhRoad);
+
+  // Main Entrance Driveway (From Main Gate at X=36, Z=-8 to the Central Quad)
+  const mainDrivewayGeom = new THREE.PlaneGeometry(40, 8);
+  mainDrivewayGeom.rotateX(-Math.PI / 2);
+  const mainDriveway = new THREE.Mesh(mainDrivewayGeom, materials.stonePaving);
+  mainDriveway.position.set(16, 0.025, -8);
+  mainDriveway.receiveShadow = true;
+  pathGroup.add(mainDriveway);
+
+  // Central Spine Road (Admin -> Central Quad -> South Walkway)
+  const spineGeom = new THREE.PlaneGeometry(7.0, 130);
   spineGeom.rotateX(-Math.PI / 2);
-  const spine = new THREE.Mesh(spineGeom, materials.asphaltPath);
-  spine.position.set(0, 0.02, 10);
+  const spine = new THREE.Mesh(spineGeom, materials.stonePaving);
+  spine.position.set(0, 0.02, 25);
   spine.receiveShadow = true;
   pathGroup.add(spine);
 
-  // Central Quad Paved Ring & Crosswalk
-  const quadRingGeom = new THREE.RingGeometry(11, 17, 32);
+  // Central Quad Paved Ring around Flagpole
+  const quadRingGeom = new THREE.RingGeometry(12, 18, 32);
   quadRingGeom.rotateX(-Math.PI / 2);
   const quadRing = new THREE.Mesh(quadRingGeom, materials.stonePaving);
   quadRing.position.set(0, 0.03, 16);
   quadRing.receiveShadow = true;
   pathGroup.add(quadRing);
 
-  // Cross Roads (East-West Promenade)
-  const crossGeom = new THREE.PlaneGeometry(90, 5.5);
+  // East-West Cross Promenade (Science Wing <-> Quad <-> College Ground)
+  const crossGeom = new THREE.PlaneGeometry(100, 6.0);
   crossGeom.rotateX(-Math.PI / 2);
   const cross = new THREE.Mesh(crossGeom, materials.asphaltPath);
-  cross.position.set(0, 0.02, 16);
+  cross.position.set(0, 0.025, 16);
   cross.receiveShadow = true;
   pathGroup.add(cross);
 
-  // North-East / North-West Campus Pathways
-  const pathNGeom = new THREE.PlaneGeometry(80, 4.0);
-  pathNGeom.rotateX(-Math.PI / 2);
-  const pathN = new THREE.Mesh(pathNGeom, materials.stonePaving);
-  pathN.position.set(0, 0.02, -14);
-  pathN.receiveShadow = true;
-  pathGroup.add(pathN);
+  // Southern Walkway (Connecting Canteen, Central Library, Computer Lab & Pond)
+  const southWalkGeom = new THREE.PlaneGeometry(60, 5.0);
+  southWalkGeom.rotateX(-Math.PI / 2);
+  const southWalk = new THREE.Mesh(southWalkGeom, materials.stonePaving);
+  southWalk.position.set(0, 0.025, 65);
+  southWalk.receiveShadow = true;
+  pathGroup.add(southWalk);
+
+  // East Connector to Malda College Ground
+  const groundConnGeom = new THREE.PlaneGeometry(28, 5.0);
+  groundConnGeom.rotateX(-Math.PI / 2);
+  const groundConn = new THREE.Mesh(groundConnGeom, materials.asphaltPath);
+  groundConn.position.set(46, 0.025, 42);
+  groundConn.receiveShadow = true;
+  pathGroup.add(groundConn);
 
   root.add(pathGroup);
 
-  // 3. Instantiate Canonical 8 Malda College Buildings
+  // 3. Register Canonical Malda College Buildings with Authentic Spatial Coordinates
   const registerBuilding = (
     code: string,
     name: string,
     pos: THREE.Vector3,
     size: THREE.Vector3,
-    builder: (m: CampusMaterials) => { group: THREE.Group; hitbox: THREE.Mesh }
+    builder: (m: CampusMaterials) => { group: THREE.Group; hitbox: THREE.Mesh },
+    shortTitle?: string
   ) => {
     const { group, hitbox } = builder(materials);
     group.position.copy(pos);
     hitbox.userData = { buildingCode: code, buildingName: name };
     root.add(group);
+
+    // Floating 3D Label
+    const labelTitle = shortTitle || name.split('(')[0].trim();
+    const labelSprite = createBuildingLabelSprite(labelTitle, code);
+    labelSprite.position.set(pos.x, pos.y + size.y + 3.2, pos.z);
+    root.add(labelSprite);
+    buildingLabels.push(labelSprite);
 
     const node: BuildingNode = {
       code,
@@ -738,6 +903,7 @@ export function buildCampusSceneGraph(materials: CampusMaterials): CampusSceneGr
       size,
       group,
       meshForRaycast: hitbox,
+      labelSprite,
     };
     buildings.set(code, node);
     buildingNodes.push(node);
@@ -749,79 +915,98 @@ export function buildCampusSceneGraph(materials: CampusMaterials): CampusSceneGr
     'Main Administrative Block (Centenary Hall & Principal Desk)',
     new THREE.Vector3(0, 0, -18),
     new THREE.Vector3(34, 16, 18),
-    buildCentenaryBuilding
+    buildCentenaryBuilding,
+    'Administrative Block'
   );
 
-  // 2. Durgakingkar Sadan (Premier Auditorium & Cultural Conference Hall)
+  // 2. Durgakingkar Sadan (Premier Auditorium & Cultural Conference Hall - North-West)
   registerBuilding(
     'DURGA-SADAN',
     'Durgakingkar Sadan (Auditorium & Conference Centre)',
-    new THREE.Vector3(-18, 0, -32),
+    new THREE.Vector3(-34, 0, -24),
     new THREE.Vector3(30, 14, 20),
-    buildDurgakingkarSadan
+    buildDurgakingkarSadan,
+    'Durgakingkar Sadan'
   );
 
-  // 3. Vidyasagar Science Complex (West Wing)
-  registerBuilding(
-    'VID-BHAVAN',
-    'Vidyasagar Science Complex (Physics, Chem, Math, Botany, Zoology)',
-    new THREE.Vector3(-32, 0, -4),
-    new THREE.Vector3(28, 11, 15),
-    buildVidyasagarBhavan
-  );
-
-  // 4. Central Library (East Promenade)
-  registerBuilding(
-    'LIB-CENTRAL',
-    'Central Library & Digital Knowledge Center',
-    new THREE.Vector3(32, 0, -4),
-    new THREE.Vector3(24, 10, 18),
-    buildCentralLibrary
-  );
-
-  // 5. College Pond (Historic Ecological Waterbody south of Library)
-  registerBuilding(
-    'COLLEGE-POND',
-    'College Pond (Historic Campus Waterbody)',
-    new THREE.Vector3(32, 0, 20),
-    new THREE.Vector3(26, 4, 18),
-    buildCollegePond
-  );
-
-  // 6. Rabindra Bhavan (Arts & Humanities - Far North-East)
+  // 3. Rabindra Bhavan (Arts & Humanities - North-East near Rabindra Ave)
   registerBuilding(
     'RAB-BHAVAN',
     'Rabindra Arts & Humanities Bhavan',
-    new THREE.Vector3(28, 0, -32),
+    new THREE.Vector3(20, 0, -32),
     new THREE.Vector3(28, 14, 22),
-    buildRabindraBhavan
+    buildRabindraBhavan,
+    'Rabindra Arts Bhavan'
   );
 
-  // 7. Central Computer Lab & BCA Complex (South-West)
+  // 4. Malda College Main Gate (East boundary on Rabindra Avenue / Old NH 81)
   registerBuilding(
-    'BCA-COMPLEX',
-    'Central Computer Lab & BCA Innovation Complex',
-    new THREE.Vector3(-30, 0, 22),
-    new THREE.Vector3(22, 9, 14),
-    buildBCAComplex
+    'MAIN-GATE',
+    'Malda College Main Gate (Rabindra Avenue)',
+    new THREE.Vector3(36, 0, -8),
+    new THREE.Vector3(26, 8, 8),
+    buildMainGate,
+    'College Main Gate'
   );
 
-  // 8. Student Common Room & Canteen (South-East)
+  // 5. Vidyasagar Science Complex (West Wing - Labs & Research)
+  registerBuilding(
+    'VID-BHAVAN',
+    'Vidyasagar Science Complex (Physics, Chem, Math, Botany, Zoology)',
+    new THREE.Vector3(-38, 0, 14),
+    new THREE.Vector3(28, 11, 15),
+    buildVidyasagarBhavan,
+    'Vidyasagar Science Wing'
+  );
+
+  // 6. Student Common Room & Canteen (South of Quad)
   registerBuilding(
     'CANTEEN-SCR',
     'Student Common Room & Cafeteria (Canteen)',
-    new THREE.Vector3(12, 0, 36),
+    new THREE.Vector3(-14, 0, 42),
     new THREE.Vector3(18, 7, 12),
-    buildCanteen
+    buildCanteen,
+    'Campus Canteen & SCR'
   );
 
-  // 9. Malda College Sports Ground & Pavilion (West Grounds)
+  // 7. Central Library (East of central promenade)
+  registerBuilding(
+    'LIB-CENTRAL',
+    'Central Library & Digital Knowledge Center',
+    new THREE.Vector3(18, 0, 54),
+    new THREE.Vector3(24, 10, 18),
+    buildCentralLibrary,
+    'Central Library'
+  );
+
+  // 8. Central Computer Lab & BCA Innovation Complex (South-West)
+  registerBuilding(
+    'BCA-COMPLEX',
+    'Central Computer Lab & BCA Innovation Complex',
+    new THREE.Vector3(-24, 0, 78),
+    new THREE.Vector3(22, 9, 14),
+    buildBCAComplex,
+    'Central Computer Lab'
+  );
+
+  // 9. College Pond (Historic Ecological Waterbody south of Library)
+  registerBuilding(
+    'COLLEGE-POND',
+    'College Pond (Historic Campus Waterbody)',
+    new THREE.Vector3(18, 0, 98),
+    new THREE.Vector3(26, 4, 18),
+    buildCollegePond,
+    'College Pond'
+  );
+
+  // 10. Malda College Athletic Ground & Sports Pavilion (Expansive East Grounds)
   registerBuilding(
     'SPORTS-PAV',
     'Malda College Ground & Sports Pavilion',
-    new THREE.Vector3(-32, 0, 48),
-    new THREE.Vector3(44, 10, 30),
-    buildSportsPavilion
+    new THREE.Vector3(66, 0, 42),
+    new THREE.Vector3(56, 10, 40),
+    buildCollegeGround,
+    'Malda College Ground'
   );
 
   // 4. Central Flagpole in Central Quad
@@ -835,6 +1020,9 @@ export function buildCampusSceneGraph(materials: CampusMaterials): CampusSceneGr
     [-18, 16], [18, 16],
     [-18, -14], [18, -14],
     [-5, -10], [5, -10],
+    [20, -8], [28, -8],
+    [10, 54], [10, 78],
+    [36, 20], [36, 60],
   ];
   lampPositions.forEach(([lx, lz]) => {
     const { group: lGrp, glow } = createLampPost(materials, lx, lz);
@@ -842,7 +1030,7 @@ export function buildCampusSceneGraph(materials: CampusMaterials): CampusSceneGr
     lampGlows.push(glow);
   });
 
-  // 6. Campus Mature Trees (Dense Green Layering)
+  // 6. Campus Mature Trees (Lush Greenery Layering)
   const treePositions: [number, number, number, number, boolean][] = [
     // Perimeter and quad trees
     [-14, 2, 5.8, 3.2, false],
@@ -850,27 +1038,26 @@ export function buildCampusSceneGraph(materials: CampusMaterials): CampusSceneGr
     [-15, 30, 6.2, 3.4, true],
     [15, 30, 6.0, 3.1, false],
     [-8, 42, 5.2, 2.8, false],
-    [8, 42, 5.4, 2.9, true],
+    [6, 42, 5.4, 2.9, true],
     // Near Science block
-    [-46, 0, 6.5, 3.6, false],
-    [-46, -14, 5.8, 3.0, true],
-    [-18, -4, 5.0, 2.6, true],
-    // Near Library
-    [46, 0, 6.2, 3.5, false],
-    [46, -14, 5.9, 3.1, true],
-    [18, -4, 5.2, 2.7, false],
-    // Background boundary tree-line
+    [-52, 0, 6.5, 3.6, false],
+    [-52, -14, 5.8, 3.0, true],
+    [-24, -4, 5.0, 2.6, true],
+    // Near Library & Pond
+    [32, 54, 6.2, 3.5, false],
+    [4, 98, 5.9, 3.1, true],
+    [32, 98, 5.6, 2.9, false],
+    // North Boundary tree-line
     [-48, -42, 7.2, 3.8, false],
     [-24, -44, 7.0, 3.6, true],
     [0, -46, 7.5, 4.0, false],
     [24, -44, 7.1, 3.7, true],
     [48, -42, 6.9, 3.6, false],
     // South boundary
-    [-48, 54, 6.6, 3.4, false],
-    [-20, 56, 6.8, 3.5, true],
-    [0, 58, 7.0, 3.8, false],
-    [20, 56, 6.7, 3.5, true],
-    [48, 54, 6.8, 3.4, false],
+    [-48, 90, 6.6, 3.4, false],
+    [-20, 100, 6.8, 3.5, true],
+    [0, 105, 7.0, 3.8, false],
+    [36, 110, 6.7, 3.5, true],
   ];
 
   treePositions.forEach(([tx, tz, th, tr, tAlt]) => {
@@ -880,11 +1067,16 @@ export function buildCampusSceneGraph(materials: CampusMaterials): CampusSceneGr
   });
 
   const dispose = () => {
-    // Traverse and dispose all non-shared geometries
+    // Traverse and dispose all non-shared geometries and textures
     root.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh) {
         const m = obj as THREE.Mesh;
         if (m.geometry) m.geometry.dispose();
+      }
+      if ((obj as THREE.Sprite).isSprite) {
+        const s = obj as THREE.Sprite;
+        if (s.material && s.material.map) s.material.map.dispose();
+        if (s.material) s.material.dispose();
       }
     });
   };
@@ -893,6 +1085,7 @@ export function buildCampusSceneGraph(materials: CampusMaterials): CampusSceneGr
     root,
     buildings,
     buildingNodes,
+    buildingLabels,
     lampGlows,
     flagMesh,
     pathMesh: spine,

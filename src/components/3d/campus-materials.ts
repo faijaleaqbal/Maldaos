@@ -21,6 +21,8 @@ export interface CampusMaterials {
   campusLawn: THREE.MeshStandardMaterial;
   pondWater: THREE.MeshStandardMaterial;
   athleticTurf: THREE.MeshStandardMaterial;
+  cricketPitch: THREE.MeshStandardMaterial;
+  gateArch: THREE.MeshStandardMaterial;
   treeTrunk: THREE.MeshStandardMaterial;
   treeFoliage: THREE.MeshStandardMaterial;
   treeFoliageAlt: THREE.MeshStandardMaterial;
@@ -273,6 +275,18 @@ export function createCampusMaterials(maxAnisotropy: number = 4): CampusMaterial
     metalness: 0.02,
   });
 
+  const cricketPitch = new THREE.MeshStandardMaterial({
+    color: 0xc4ad82,
+    roughness: 0.95,
+    metalness: 0.01,
+  });
+
+  const gateArch = new THREE.MeshStandardMaterial({
+    color: 0xd4a72c,
+    roughness: 0.35,
+    metalness: 0.65,
+  });
+
   const treeTrunk = new THREE.MeshStandardMaterial({
     color: 0x3f2f22,
     roughness: 0.92,
@@ -334,6 +348,8 @@ export function createCampusMaterials(maxAnisotropy: number = 4): CampusMaterial
     campusLawn.dispose();
     pondWater.dispose();
     athleticTurf.dispose();
+    cricketPitch.dispose();
+    gateArch.dispose();
     treeTrunk.dispose();
     treeFoliage.dispose();
     treeFoliageAlt.dispose();
@@ -357,6 +373,8 @@ export function createCampusMaterials(maxAnisotropy: number = 4): CampusMaterial
     campusLawn,
     pondWater,
     athleticTurf,
+    cricketPitch,
+    gateArch,
     treeTrunk,
     treeFoliage,
     treeFoliageAlt,

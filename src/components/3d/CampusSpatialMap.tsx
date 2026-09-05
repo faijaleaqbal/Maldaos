@@ -44,16 +44,16 @@ const CAMERA_PRESETS: Record<
   string,
   { p: [number, number, number]; t: [number, number, number] }
 > = {
-  OVERVIEW: { p: [0, 48, 72], t: [0, 4, 8] },
-  CENTENARY: { p: [0, 16, 24], t: [0, 6, -18] },
-  DURGA: { p: [-8, 16, -10], t: [-18, 6, -32] },
-  SCIENCE: { p: [-20, 15, 18], t: [-32, 6, -4] },
-  LIBRARY: { p: [20, 15, 18], t: [32, 6, -4] },
-  POND: { p: [20, 14, 40], t: [32, 2, 20] },
-  ARTS: { p: [18, 18, -10], t: [28, 8, -32] },
-  IT: { p: [-18, 14, 40], t: [-30, 5, 22] },
-  HOSTEL: { p: [-22, 16, 62], t: [-34, 6, 44] },
-  SPORTS: { p: [-18, 16, 24], t: [-32, 5, 48] },
+  OVERVIEW: { p: [10, 56, 92], t: [8, 4, 18] },
+  CENTENARY: { p: [0, 18, 14], t: [0, 6, -18] },
+  DURGA: { p: [-20, 18, 2], t: [-34, 6, -24] },
+  SCIENCE: { p: [-22, 16, 38], t: [-38, 6, 14] },
+  LIBRARY: { p: [6, 16, 78], t: [18, 5, 54] },
+  POND: { p: [6, 14, 120], t: [18, 2, 98] },
+  ARTS: { p: [10, 18, -10], t: [20, 8, -32] },
+  IT: { p: [-12, 16, 102], t: [-24, 5, 78] },
+  SPORTS: { p: [42, 22, 66], t: [66, 4, 42] },
+  GATE: { p: [24, 12, 12], t: [36, 4, -8] },
 };
 
 export const CampusSpatialMap: React.FC<CampusSpatialMapProps> = ({
@@ -74,6 +74,7 @@ export const CampusSpatialMap: React.FC<CampusSpatialMapProps> = ({
   const [severityFilter, setSeverityFilter] = useState<'ALL' | 'URGENT' | 'HIGH' | 'OPEN'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
   const [webGLSupported, setWebGLSupported] = useState<boolean | null>(null);
   const [sceneReady, setSceneReady] = useState(false);
 
@@ -134,9 +135,17 @@ export const CampusSpatialMap: React.FC<CampusSpatialMapProps> = ({
     raycaster: new THREE.Raycaster(),
     mouse: new THREE.Vector2(),
     buildingNodes: [] as BuildingNode[],
+    buildingLabels: [] as THREE.Sprite[],
     highlightBox: null as THREE.Mesh | null,
     issueBeacons: [] as { group: THREE.Group; issue: Issue; basePos: THREE.Vector3 }[],
   });
+
+  // Toggle 3D building labels
+  useEffect(() => {
+    animStateRef.current.buildingLabels.forEach((lbl) => {
+      lbl.visible = showLabels;
+    });
+  }, [showLabels]);
 
   // Keep a stable ref to callback functions and state
   const callbacksRef = useRef({
@@ -196,6 +205,7 @@ export const CampusSpatialMap: React.FC<CampusSpatialMapProps> = ({
     const sceneGraph = buildCampusSceneGraph(materials);
     scene.add(sceneGraph.root);
     animStateRef.current.buildingNodes = sceneGraph.buildingNodes;
+    animStateRef.current.buildingLabels = sceneGraph.buildingLabels;
 
     // Lighting
     const hemiLight = new THREE.HemisphereLight(0xfff6ea, 0x6e5d4d, 0.9);
@@ -635,15 +645,17 @@ export const CampusSpatialMap: React.FC<CampusSpatialMapProps> = ({
             }}
             className="text-xs font-semibold text-ink bg-transparent border-none focus:outline-none cursor-pointer pr-2"
           >
-            <option value="ALL">Entire Campus (All 8 Bhavans)</option>
+            <option value="ALL">Entire Campus (All Facilities)</option>
             <option value="CENT-ADM">Centenary Building (Admin / IQAC)</option>
-            <option value="VID-BHAVAN">Vidyasagar Bhavan (Science / Tech)</option>
+            <option value="DURGA-SADAN">Durgakingkar Sadan (Auditorium)</option>
+            <option value="VID-BHAVAN">Vidyasagar Bhavan (Science Wing)</option>
             <option value="LIB-CENTRAL">Central Library & Archives</option>
-            <option value="RAB-BHAVAN">Rabindra Bhavan (Arts / Audit)</option>
-            <option value="BCA-COMPLEX">BCA & IT Innovation Complex</option>
+            <option value="RAB-BHAVAN">Rabindra Bhavan (Arts & Humanities)</option>
+            <option value="BCA-COMPLEX">Central Computer Lab & BCA Complex</option>
             <option value="CANTEEN-SCR">Student Common Room / Canteen</option>
-            <option value="HOSTEL-BOYS">Kazi Nazrul Hostel (Boys)</option>
-            <option value="SPORTS-PAV">College Sports Pavilion</option>
+            <option value="COLLEGE-POND">College Pond (Historic Waterbody)</option>
+            <option value="SPORTS-PAV">Malda College Ground & Pavilion</option>
+            <option value="MAIN-GATE">Main Gate (Rabindra Avenue)</option>
           </select>
         </div>
 
@@ -667,6 +679,17 @@ export const CampusSpatialMap: React.FC<CampusSpatialMapProps> = ({
 
         {/* Right: Presets & Tools */}
         <div className="flex items-center gap-1.5 pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => setShowLabels(!showLabels)}
+            className={`p-1.5 rounded-md border border-warm-300 shadow-sm transition-colors cursor-pointer ${
+              showLabels ? 'bg-maroon-800 text-white' : 'bg-white/95 text-ink hover:bg-white'
+            }`}
+            title={showLabels ? 'Hide 3D Building Labels' : 'Show 3D Building Labels'}
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </button>
+
           <button
             type="button"
             onClick={() => {

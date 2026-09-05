@@ -109,23 +109,22 @@ interface CameraWaypoint {
 
 const CAM_WAYPOINTS: CameraWaypoint[] = [
   // 0. Intro Overview: Centered looking down central quad to Centenary Hall
-  { p: [0, 16, 52], t: [0, 8, 4], fov: 38 },
+  { p: [0, 22, 62], t: [0, 6, 8], fov: 38 },
 
-  // 1. Intake: Swoop toward Vidyasagar entrance with pulsating crimson hazard beacon
-  { p: [-20, 10, 18], t: [-32, 5, -4], fov: 42 },
+  // 1. Intake: Swoop toward Vidyasagar Science Wing with pulsating crimson hazard beacon
+  { p: [-22, 16, 36], t: [-38, 6, 14], fov: 40 },
 
-  // 2. Triage (P1 Fix): Clear 35° isometric perspective of Vidyasagar Science Block
-  // Positioned in open quad corridor to eliminate foreground roof obstruction
-  { p: [-8, 18, 12], t: [-32, 5, -4], fov: 38 },
+  // 2. Triage: Isometric perspective capturing Vidyasagar Science Block and Durgakingkar Sadan
+  { p: [-16, 18, 10], t: [-36, 7, -8], fov: 38 },
 
-  // 3. Dispatch: Looking along pathway toward BCA & IT Complex
-  { p: [-10, 14, 46], t: [-30, 5, 22], fov: 40 },
+  // 3. Dispatch: Looking along southern pathway toward Central Computer Lab & BCA Complex
+  { p: [-10, 16, 56], t: [-24, 6, 78], fov: 40 },
 
-  // 4. Resolution (P1 Fix): Clean quadrangle perspective with ZERO tree canopy obstruction
-  { p: [0, 14, 38], t: [0, 2, 16], fov: 42 },
+  // 4. Resolution: Clean central quadrangle perspective overlooking the flagpole & walkways
+  { p: [0, 15, 42], t: [0, 2, 16], fov: 42 },
 
-  // 5. Verification (P1 Fix): Grand commanding overview across all 8 bhavans & quad
-  { p: [0, 42, 68], t: [0, 6, 0], fov: 42 },
+  // 5. Verification: Grand commanding overview across all campus landmarks & athletic ground
+  { p: [18, 56, 96], t: [6, 6, 16], fov: 44 },
 ];
 
 export const CampusHeroScene: React.FC = () => {
@@ -298,7 +297,7 @@ export const CampusHeroScene: React.FC = () => {
     scene.add(quadBounce);
 
     const beaconGroup = new THREE.Group();
-    beaconGroup.position.set(-32, 7.5, 3.5);
+    beaconGroup.position.set(-38, 11.5, 14);
 
     const beaconCore = new THREE.Mesh(
       new THREE.SphereGeometry(0.65, 16, 16),
