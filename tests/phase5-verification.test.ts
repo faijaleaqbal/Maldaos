@@ -153,7 +153,7 @@ describe('Phase 5 — 3. Analytics & Campus Health Truthfulness', () => {
         category: 'SAFETY',
         priority: 'URGENT',
         status: 'OPEN',
-        location: { building: 'Main Block', buildingCode: 'MAIN', floor: '1', roomOrLandmark: 'Entrance', coordinates: { lat: 25.0088, lng: 88.1394 } },
+        location: { building: 'Main Administrative Block', buildingCode: 'MAIN', floor: '1', roomOrLandmark: 'Entrance', coordinates: { lat: 25.0018, lng: 88.1366 } },
         reporter: { id: 'usr-2', name: 'Student 2', role: 'STUDENT' },
         department: 'Electrical',
         images: [],

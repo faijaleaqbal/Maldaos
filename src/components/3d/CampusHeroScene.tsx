@@ -511,7 +511,7 @@ export const CampusHeroScene: React.FC = () => {
               Malda College 3D Spatial Grid
             </span>
             <span className="text-[10px] text-ink-muted hidden md:inline">
-              | 8 Bhavans • 25.0088° N, 88.1392° E
+              | 8 Bhavans • 25.0018° N, 88.1366° E
             </span>
           </div>
 

@@ -97,31 +97,31 @@ describe('Phase 5B — Contract 1: Real Location Data Integrity', () => {
 
     const main = locations!.find((l) => l.code === 'MAIN');
     expect(main).toBeDefined();
-    expect(main!.name).toBe('Main Block');
+    expect(main!.name).toBe('Main Administrative Block');
     expect(typeof main!.latitude).toBe('number');
     expect(typeof main!.longitude).toBe('number');
-    expect(main!.latitude).toBeCloseTo(25.0088, 3);
-    expect(main!.longitude).toBeCloseTo(88.1394, 3);
+    expect(main!.latitude).toBeCloseTo(25.0018, 3);
+    expect(main!.longitude).toBeCloseTo(88.1366, 3);
 
     const lib = locations!.find((l) => l.code === 'LIB');
     expect(lib).toBeDefined();
-    expect(lib!.latitude).toBeCloseTo(25.0089, 3);
-    expect(lib!.longitude).toBeCloseTo(88.1402, 3);
+    expect(lib!.latitude).toBeCloseTo(25.0007, 3);
+    expect(lib!.longitude).toBeCloseTo(88.1368, 3);
 
     const hostA = locations!.find((l) => l.code === 'HOST-A');
     expect(hostA).toBeDefined();
-    expect(hostA!.latitude).toBeCloseTo(25.0095, 3);
-    expect(hostA!.longitude).toBeCloseTo(88.1385, 3);
+    expect(hostA!.latitude).toBeCloseTo(25.0022, 3);
+    expect(hostA!.longitude).toBeCloseTo(88.1362, 3);
 
     const caf = locations!.find((l) => l.code === 'CAF');
     expect(caf).toBeDefined();
-    expect(caf!.latitude).toBeCloseTo(25.0082, 3);
-    expect(caf!.longitude).toBeCloseTo(88.1397, 3);
+    expect(caf!.latitude).toBeCloseTo(25.0013, 3);
+    expect(caf!.longitude).toBeCloseTo(88.1363, 3);
 
     const sport = locations!.find((l) => l.code === 'SPORT');
     expect(sport).toBeDefined();
-    expect(sport!.latitude).toBeCloseTo(25.0078, 3);
-    expect(sport!.longitude).toBeCloseTo(88.1408, 3);
+    expect(sport!.latitude).toBeCloseTo(25.0011, 3);
+    expect(sport!.longitude).toBeCloseTo(88.1375, 3);
   });
 
   it('mapLocationRow preserves real coordinates and falls back to campus center only when null', () => {
@@ -255,7 +255,7 @@ describe('Phase 5B — Contract 3: Analytics Truthfulness', () => {
       category: r.category as any,
       priority: r.priority as any,
       status: r.status as any,
-      location: { building: 'Main Block', buildingCode: 'MAIN', coordinates: { lat: 25.0088, lng: 88.1394 } },
+      location: { building: 'Main Administrative Block', buildingCode: 'MAIN', coordinates: { lat: 25.0018, lng: 88.1366 } },
       reporter: { id: 'rep-1', name: 'Student', role: 'STUDENT' as const, isAnonymous: false },
       createdAt: r.created_at,
       updatedAt: r.created_at,

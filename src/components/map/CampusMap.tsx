@@ -296,7 +296,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
           <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
           <div className="absolute bottom-2 left-3 right-3 z-[1000] bg-white/90 backdrop-blur-md px-3 py-1 rounded-md border border-warm-300 text-xs text-ink-muted font-mono flex items-center justify-between">
             <span>2D Cartographic GIS Map</span>
-            <span>25.0088° N, 88.1394° E</span>
+            <span>{MALDA_CAMPUS_COORDINATES.lat.toFixed(4)}° N, {MALDA_CAMPUS_COORDINATES.lng.toFixed(4)}° E</span>
           </div>
         </div>
       )}

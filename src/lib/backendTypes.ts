@@ -369,8 +369,8 @@ export function deriveTicketNumber(issueId: string, createdAt: string): string {
 // ============================================================
 
 export const MALDA_CAMPUS_COORDINATES = {
-  lat: 25.0088,
-  lng: 88.1394,
+  lat: 25.001844,
+  lng: 88.136558,
 };
 
 // ============================================================

@@ -40,7 +40,7 @@ export const Navbar: React.FC = () => {
             <span className="font-serif tracking-wider font-semibold text-gold-300">
               MALDA COLLEGE
             </span>
-            <span className="text-white/70">• Estd. 1944 • NAAC 'A' Grade • West Bengal</span>
+            <span className="text-white/70">• Estd. 1944 • Affiliated to University of Gour Banga • NAAC Accredited</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden sm:inline text-white/75 font-mono text-[10px] uppercase tracking-wider">

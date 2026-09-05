@@ -46,12 +46,14 @@ const CAMERA_PRESETS: Record<
 > = {
   OVERVIEW: { p: [0, 48, 72], t: [0, 4, 8] },
   CENTENARY: { p: [0, 16, 24], t: [0, 6, -18] },
+  DURGA: { p: [-8, 16, -10], t: [-18, 6, -32] },
   SCIENCE: { p: [-20, 15, 18], t: [-32, 6, -4] },
   LIBRARY: { p: [20, 15, 18], t: [32, 6, -4] },
+  POND: { p: [20, 14, 40], t: [32, 2, 20] },
   ARTS: { p: [18, 18, -10], t: [28, 8, -32] },
   IT: { p: [-18, 14, 40], t: [-30, 5, 22] },
   HOSTEL: { p: [-22, 16, 62], t: [-34, 6, 44] },
-  SPORTS: { p: [-18, 16, -12], t: [-32, 5, -34] },
+  SPORTS: { p: [-18, 16, 24], t: [-32, 5, 48] },
 };
 
 export const CampusSpatialMap: React.FC<CampusSpatialMapProps> = ({

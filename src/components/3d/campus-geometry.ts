@@ -449,6 +449,108 @@ function buildSportsPavilion(m: CampusMaterials): { group: THREE.Group; hitbox: 
   return { group: grp, hitbox };
 }
 
+/** 9. DURGAKINGKAR SADAN (Premier Auditorium & Cultural Conference Hall) */
+function buildDurgakingkarSadan(m: CampusMaterials): { group: THREE.Group; hitbox: THREE.Mesh } {
+  const grp = new THREE.Group();
+
+  const base = createBox(30, 0.7, 20, m.concreteBase, 0, 0, 0);
+  const mainHall = createBox(28, 10.5, 18, m.brick, 0, 0.7, 0);
+  const stageTower = createBox(16, 13.0, 7, m.brickDark, 0, 0.7, -6.5);
+  const roof = createHippedRoof(28.6, 3.2, 18.6, m.roofTile, 0, 11.2, 0);
+  grp.add(base, mainHall, stageTower, roof);
+
+  // Grand Pillared Entrance Portico
+  const portico = createBox(18, 5.2, 4.0, m.stoneTrim, 0, 0.7, 10.5);
+  for (let c = -7.0; c <= 7.0; c += 3.5) {
+    grp.add(createColumn(0.24, 4.5, m.stoneTrim, c, 0.7, 12.2));
+  }
+  const porticoPediment = createHippedRoof(18.4, 2.0, 4.4, m.roofTile, 0, 5.9, 10.5);
+  grp.add(portico, porticoPediment);
+
+  // Auditorium Arched Doors
+  const door1 = createBox(2.2, 3.2, 0.2, m.verandahWood, -4.5, 0.7, 9.1);
+  const door2 = createBox(2.2, 3.2, 0.2, m.verandahWood, 0, 0.7, 9.1);
+  const door3 = createBox(2.2, 3.2, 0.2, m.verandahWood, 4.5, 0.7, 9.1);
+  grp.add(door1, door2, door3);
+
+  const hitbox = new THREE.Mesh(
+    new THREE.BoxGeometry(32, 14, 22),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitbox.position.set(0, 7, 0);
+  grp.add(hitbox);
+
+  return { group: grp, hitbox };
+}
+
+/** 10. COLLEGE POND (Historic Waterbody & Ecological Wetland) */
+function buildCollegePond(m: CampusMaterials): { group: THREE.Group; hitbox: THREE.Mesh } {
+  const grp = new THREE.Group();
+
+  // Embankment stone boundary
+  const bankGeom = new THREE.BoxGeometry(26, 0.4, 18);
+  const bank = new THREE.Mesh(bankGeom, m.stoneTrim);
+  bank.position.set(0, 0.1, 0);
+  bank.receiveShadow = true;
+  grp.add(bank);
+
+  // Water surface
+  const waterGeom = new THREE.PlaneGeometry(24, 16);
+  waterGeom.rotateX(-Math.PI / 2);
+  const water = new THREE.Mesh(waterGeom, m.pondWater);
+  water.position.set(0, 0.22, 0);
+  grp.add(water);
+
+  // Stone stepped ghats
+  const step1 = createBox(8, 0.2, 1.2, m.stonePaving, 0, 0.1, 8.2);
+  const step2 = createBox(8, 0.2, 1.2, m.stonePaving, 0, 0.0, 9.2);
+  grp.add(step1, step2);
+
+  const hitbox = new THREE.Mesh(
+    new THREE.BoxGeometry(26, 4, 18),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitbox.position.set(0, 1, 0);
+  grp.add(hitbox);
+
+  return { group: grp, hitbox };
+}
+
+/** 11. MALDA COLLEGE ATHLETIC GROUND & RUNNING TURF */
+function buildCollegeGround(m: CampusMaterials): { group: THREE.Group; hitbox: THREE.Mesh } {
+  const grp = new THREE.Group();
+
+  // Athletic Green Turf
+  const turfGeom = new THREE.PlaneGeometry(42, 28);
+  turfGeom.rotateX(-Math.PI / 2);
+  const turf = new THREE.Mesh(turfGeom, m.athleticTurf);
+  turf.position.set(0, 0.04, 0);
+  turf.receiveShadow = true;
+  grp.add(turf);
+
+  // Running track outer boundary line
+  const trackGeom = new THREE.RingGeometry(18, 20, 32);
+  trackGeom.rotateX(-Math.PI / 2);
+  const track = new THREE.Mesh(trackGeom, m.asphaltPath);
+  track.position.set(0, 0.03, 0);
+  track.scale.set(1.1, 0.7, 1);
+  grp.add(track);
+
+  // Sports Pavilion stand
+  const stand = createBox(16, 2.5, 4, m.concreteBase, 0, 0, 13);
+  const standRoof = createBox(17, 0.3, 4.5, m.roofTile, 0, 2.6, 13);
+  grp.add(stand, standRoof);
+
+  const hitbox = new THREE.Mesh(
+    new THREE.BoxGeometry(44, 4, 30),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitbox.position.set(0, 1, 0);
+  grp.add(hitbox);
+
+  return { group: grp, hitbox };
+}
+
 /** Procedural Bengali / Indian Campus Trees (Banyan / Neem style) */
 function createTree(
   m: CampusMaterials,
@@ -644,22 +746,31 @@ export function buildCampusSceneGraph(materials: CampusMaterials): CampusSceneGr
   // 1. Centenary Building (Central Hub - Front Quad)
   registerBuilding(
     'CENT-ADM',
-    'Centenary Building (Administration & IQAC)',
+    'Main Administrative Block (Centenary Hall & Principal Desk)',
     new THREE.Vector3(0, 0, -18),
     new THREE.Vector3(34, 16, 18),
     buildCentenaryBuilding
   );
 
-  // 2. Vidyasagar Bhavan (Science & Tech Block - West Wing)
+  // 2. Durgakingkar Sadan (Premier Auditorium & Cultural Conference Hall)
+  registerBuilding(
+    'DURGA-SADAN',
+    'Durgakingkar Sadan (Auditorium & Conference Centre)',
+    new THREE.Vector3(-18, 0, -32),
+    new THREE.Vector3(30, 14, 20),
+    buildDurgakingkarSadan
+  );
+
+  // 3. Vidyasagar Science Complex (West Wing)
   registerBuilding(
     'VID-BHAVAN',
-    'Vidyasagar Bhavan (Science & Tech Block)',
+    'Vidyasagar Science Complex (Physics, Chem, Math, Botany, Zoology)',
     new THREE.Vector3(-32, 0, -4),
     new THREE.Vector3(28, 11, 15),
     buildVidyasagarBhavan
   );
 
-  // 3. Central Library (East Promenade)
+  // 4. Central Library (East Promenade)
   registerBuilding(
     'LIB-CENTRAL',
     'Central Library & Digital Knowledge Center',
@@ -668,48 +779,48 @@ export function buildCampusSceneGraph(materials: CampusMaterials): CampusSceneGr
     buildCentralLibrary
   );
 
-  // 4. Rabindra Bhavan (Auditorium & Arts - Far North-East)
+  // 5. College Pond (Historic Ecological Waterbody south of Library)
+  registerBuilding(
+    'COLLEGE-POND',
+    'College Pond (Historic Campus Waterbody)',
+    new THREE.Vector3(32, 0, 20),
+    new THREE.Vector3(26, 4, 18),
+    buildCollegePond
+  );
+
+  // 6. Rabindra Bhavan (Arts & Humanities - Far North-East)
   registerBuilding(
     'RAB-BHAVAN',
-    'Rabindra Bhavan (Auditorium & Arts Block)',
+    'Rabindra Arts & Humanities Bhavan',
     new THREE.Vector3(28, 0, -32),
     new THREE.Vector3(28, 14, 22),
     buildRabindraBhavan
   );
 
-  // 5. BCA & IT Complex (South-West)
+  // 7. Central Computer Lab & BCA Complex (South-West)
   registerBuilding(
     'BCA-COMPLEX',
-    'BCA & IT Innovation Complex',
+    'Central Computer Lab & BCA Innovation Complex',
     new THREE.Vector3(-30, 0, 22),
     new THREE.Vector3(22, 9, 14),
     buildBCAComplex
   );
 
-  // 6. Student Common Room & Canteen (South-East)
+  // 8. Student Common Room & Canteen (South-East)
   registerBuilding(
     'CANTEEN-SCR',
-    'Student Common Room & Cafeteria',
-    new THREE.Vector3(26, 0, 24),
+    'Student Common Room & Cafeteria (Canteen)',
+    new THREE.Vector3(12, 0, 36),
     new THREE.Vector3(18, 7, 12),
     buildCanteen
   );
 
-  // 7. Boys Hostel (Far South-West)
-  registerBuilding(
-    'HOSTEL-BOYS',
-    'Kazi Nazrul Islam Bhavan (Boys Hostel)',
-    new THREE.Vector3(-34, 0, 44),
-    new THREE.Vector3(26, 12, 16),
-    buildHostel
-  );
-
-  // 8. Sports Pavilion (Far North-West)
+  // 9. Malda College Sports Ground & Pavilion (West Grounds)
   registerBuilding(
     'SPORTS-PAV',
-    'College Sports Pavilion & Gymnasium',
-    new THREE.Vector3(-32, 0, -34),
-    new THREE.Vector3(22, 9, 14),
+    'Malda College Ground & Sports Pavilion',
+    new THREE.Vector3(-32, 0, 48),
+    new THREE.Vector3(44, 10, 30),
     buildSportsPavilion
   );
 

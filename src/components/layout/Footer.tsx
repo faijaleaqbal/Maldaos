@@ -29,7 +29,7 @@ export const Footer: React.FC = () => {
             </p>
             <div className="flex items-center gap-2 text-[11px] text-maroon-800 font-medium">
               <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-maroon-700" />
-              <span>NAAC Accredited Grade &lsquo;A&rsquo; Institution</span>
+              <span>NAAC Accredited Grade &lsquo;B+&rsquo; (2nd Cycle) Institution</span>
             </div>
           </div>
 
@@ -75,15 +75,15 @@ export const Footer: React.FC = () => {
             <div className="space-y-1.5 text-xs text-ink-muted">
               <div className="flex items-start gap-2">
                 <MapPin className="w-3.5 h-3.5 text-maroon-700 shrink-0 mt-0.5" />
-                <span>Rabindra Avenue, Malda, West Bengal — 732101, India</span>
+                <span>Rabindra Avenue, Rathbari, P.O. &amp; Dist &ndash; Malda, Pin &ndash; 732101, West Bengal</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-maroon-700 shrink-0" />
-                <span>EPABX: (03512) 220807 • Maintenance Desk Ext. 104</span>
+                <span>Phone: 03512796722 &bull; +91 03512-796722</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-maroon-700 shrink-0" />
-                <span>facilities@maldacollege.ac.in</span>
+                <span>info@maldacollege.ac.in</span>
               </div>
             </div>
           </div>
