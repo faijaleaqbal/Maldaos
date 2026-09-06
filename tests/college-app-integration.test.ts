@@ -12,6 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   COLLEGE_BASE_URL,
+  COLLEGE_ERP_LOGIN_URL,
   COLLEGE_APP_SOURCE,
   INBOUND_PARAM_KEYS,
   getCollegeServices,
@@ -21,7 +22,7 @@ import {
 import { COLLEGE_SERVICES_CONTEXT_NOTE } from '@/components/integration/CollegeServicesModal';
 
 describe('Malda College Official Services Directory', () => {
-  it('exposes official college services pointing strictly to maldacollege.ac.in', () => {
+  it('exposes official college services pointing strictly to verified official destinations', () => {
     const services = getCollegeServices();
     expect(services.length).toBeGreaterThanOrEqual(5);
 
@@ -29,7 +30,12 @@ describe('Malda College Official Services Directory', () => {
       expect(service.id).toBeTruthy();
       expect(service.name).toBeTruthy();
       expect(service.description).toBeTruthy();
-      expect(service.url).toMatch(/^https:\/\/maldacollege\.ac\.in/);
+      // Official college site or the verified official ERP login (mcerp.in),
+      // which is linked from the official college homepage.
+      const isOfficialDestination =
+        service.url.startsWith(`${COLLEGE_BASE_URL}/`) ||
+        service.url === COLLEGE_ERP_LOGIN_URL;
+      expect(isOfficialDestination).toBe(true);
       expect(['portal', 'academics', 'finance', 'library', 'support']).toContain(
         service.category
       );
@@ -47,6 +53,17 @@ describe('Malda College Official Services Directory', () => {
     expect(ids).toContain('fees-finance');
     expect(ids).toContain('central-library');
     expect(ids).toContain('student-support');
+
+    // Every listed destination must be reachable on an official college/ERP
+    // property (no fabricated college-site paths that 404 in production).
+    const exam = services.find((s) => s.id === 'exam-results');
+    const fees = services.find((s) => s.id === 'fees-finance');
+    const library = services.find((s) => s.id === 'central-library');
+    const support = services.find((s) => s.id === 'student-support');
+    expect(exam?.url).toBe(`${COLLEGE_BASE_URL}/exam-notice-result-page.php`);
+    expect(fees?.url).toBe(COLLEGE_ERP_LOGIN_URL);
+    expect(library?.url).toBe(`${COLLEGE_BASE_URL}/library.php`);
+    expect(support?.url).toBe(`${COLLEGE_BASE_URL}/grievance-redressal-cell.php`);
   });
 
   it('declares official isolation context note stating ERP records stay on college servers', () => {

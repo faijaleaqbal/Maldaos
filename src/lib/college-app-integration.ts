@@ -15,6 +15,13 @@
 
 export const COLLEGE_BASE_URL = 'https://maldacollege.ac.in';
 
+/**
+ * Official Malda College ERP login. Hosted on the college ERP domain
+ * (mcerp.in) and linked from the official college homepage. Used as the
+ * destination for ERP-bound services (fees, attendance, marks ledger).
+ */
+export const COLLEGE_ERP_LOGIN_URL = 'https://mcerp.in/erp/login.aspx';
+
 /** Query parameter names recognised on inbound links from the college app. */
 export const INBOUND_PARAM_KEYS = {
   source: 'source',
@@ -82,16 +89,16 @@ export function getCollegeServices(): CollegeServiceLink[] {
       description:
         'Examination schedules, admit cards, internal assessment marks, and semester results.',
       category: 'academics',
-      url: `${COLLEGE_BASE_URL}/examination`,
+      url: `${COLLEGE_BASE_URL}/exam-notice-result-page.php`,
       icon: 'file-badge',
     },
     {
       id: 'fees-finance',
       name: 'Fees & Finance',
       description:
-        'Online fee payment, fee ledger, scholarship disbursement, and receipts.',
+        'Official ERP login for online fee payment, fee ledger, receipts, attendance, and marks hosted on Malda College ERP servers.',
       category: 'finance',
-      url: `${COLLEGE_BASE_URL}/fees`,
+      url: COLLEGE_ERP_LOGIN_URL,
       icon: 'wallet',
       badge: 'ERP',
     },
@@ -101,7 +108,7 @@ export function getCollegeServices(): CollegeServiceLink[] {
       description:
         'Library catalogue (OPAC), e-resources, issue/return status, and reading room timings.',
       category: 'library',
-      url: `${COLLEGE_BASE_URL}/library`,
+      url: `${COLLEGE_BASE_URL}/library.php`,
       icon: 'library',
     },
     {
@@ -110,7 +117,7 @@ export function getCollegeServices(): CollegeServiceLink[] {
       description:
         'Grievance cell, anti-ragging committee, counselling, and administrative helpdesk contacts.',
       category: 'support',
-      url: `${COLLEGE_BASE_URL}/student-support`,
+      url: `${COLLEGE_BASE_URL}/grievance-redressal-cell.php`,
       icon: 'life-buoy',
     },
   ];
