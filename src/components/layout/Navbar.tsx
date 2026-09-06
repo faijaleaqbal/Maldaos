@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { RoleSwitcherModal } from './RoleSwitcherModal';
 import { NotificationDropdown } from './NotificationDropdown';
+import { CollegeServicesModal } from '@/components/integration/CollegeServicesModal';
 import { isDevSeedLoginAvailable } from '@/services/devSeedAccounts';
 import {
   Bell,
@@ -16,6 +17,8 @@ import {
   Users,
   Compass,
   Layers,
+  GraduationCap,
+  ExternalLink,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -23,6 +26,7 @@ export const Navbar: React.FC = () => {
   const { user, role, isAdmin } = useAuth();
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isCollegeServicesOpen, setIsCollegeServicesOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const isCurrent = (path: string) => {
@@ -139,6 +143,20 @@ export const Navbar: React.FC = () => {
               <span>Campus Map</span>
             </Link>
 
+            {/* Official College Services (external ERP / portal links) */}
+            <button
+              type="button"
+              onClick={() => setIsCollegeServicesOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={isCollegeServicesOpen}
+              className="px-2.5 xl:px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 text-ink-muted hover:text-ink hover:bg-warm-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700"
+              title="Official Malda College services (opens external links)"
+            >
+              <GraduationCap className="w-4 h-4 text-maroon-700" aria-hidden="true" />
+              <span>College Services</span>
+              <ExternalLink className="w-3 h-3 text-ink-faint" aria-hidden="true" />
+            </button>
+
             {/* Admin Command Center Link */}
             {isAdmin && (
               <Link
@@ -163,6 +181,19 @@ export const Navbar: React.FC = () => {
                 Report Issue
               </Button>
             </Link>
+
+            {/* College Services Trigger (mobile / tablet — desktop uses the nav link) */}
+            <button
+              type="button"
+              onClick={() => setIsCollegeServicesOpen(true)}
+              aria-label="Open official Malda College services"
+              aria-haspopup="dialog"
+              aria-expanded={isCollegeServicesOpen}
+              className="lg:hidden w-10 h-10 min-h-[44px] min-w-[44px] rounded-md border border-warm-300 bg-white hover:bg-warm-100 flex items-center justify-center text-ink cursor-pointer touch-manipulation focus-visible:ring-2 focus-visible:ring-maroon-700 focus-visible:outline-none shadow-xs active:translate-y-0.5 active:scale-95 transition-all"
+              title="College Services"
+            >
+              <GraduationCap className="w-4 h-4 text-maroon-700" aria-hidden="true" />
+            </button>
 
             {/* Notifications Trigger */}
             <div className="relative">
@@ -211,6 +242,12 @@ export const Navbar: React.FC = () => {
       <RoleSwitcherModal
         isOpen={isRoleModalOpen}
         onClose={() => setIsRoleModalOpen(false)}
+      />
+
+      {/* Official College Services Modal */}
+      <CollegeServicesModal
+        isOpen={isCollegeServicesOpen}
+        onClose={() => setIsCollegeServicesOpen(false)}
       />
     </>
   );

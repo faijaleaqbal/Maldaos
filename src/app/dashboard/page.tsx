@@ -23,11 +23,16 @@ import {
   Layers,
   ShieldAlert,
   ChevronRight,
+  GraduationCap,
+  ExternalLink,
 } from 'lucide-react';
+import { CollegeServicesModal } from '@/components/integration/CollegeServicesModal';
+import { CollegeAppBanner } from '@/components/integration/CollegeAppBanner';
 
 export default function StudentDashboardPage() {
   const { issues, summary, loading, error, refreshIssues } = useIssues();
   const { user } = useAuth();
+  const [isCollegeServicesOpen, setIsCollegeServicesOpen] = React.useState(false);
 
   // Filter issues reported by current user or student persona
   const myReports = issues.filter(
@@ -66,6 +71,9 @@ export default function StudentDashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 pb-20 sm:pb-8">
+      {/* Inbound Integration Banner (shown when launched from College Student App) */}
+      <CollegeAppBanner />
+
       {/* Institutional Student / Operator Header */}
       <div className="rounded-lg border border-warm-300 bg-white p-3.5 sm:p-5 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div className="space-y-0.5 sm:space-y-1">
@@ -284,7 +292,7 @@ export default function StudentDashboardPage() {
           Priority 4: Operational Actions & Tools
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <Link
             href="/report"
             className="p-3 sm:p-4 rounded border border-warm-300 bg-white hover:bg-warm-50 transition-colors shadow-subtle flex items-start gap-2.5 sm:gap-3"
@@ -323,8 +331,32 @@ export default function StudentDashboardPage() {
               <p className="text-xs text-ink-muted mt-0.5">Filter all reports by department, block, or status.</p>
             </div>
           </Link>
+
+          {/* Official College Services Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsCollegeServicesOpen(true)}
+            className="p-3 sm:p-4 rounded border border-warm-300 bg-white hover:bg-warm-50 transition-colors shadow-subtle flex items-start gap-2.5 sm:gap-3 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon-700"
+          >
+            <div className="w-8 h-8 rounded bg-maroon-50 border border-maroon-200 text-maroon-800 flex items-center justify-center shrink-0">
+              <GraduationCap className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1">
+                <h3 className="font-serif font-semibold text-sm text-ink">College Services</h3>
+                <ExternalLink className="w-3 h-3 text-ink-faint" aria-hidden="true" />
+              </div>
+              <p className="text-xs text-ink-muted mt-0.5">Official portal, notices, exam marks, fees & ERP links.</p>
+            </div>
+          </button>
         </div>
       </section>
+
+      {/* Official College Services Modal */}
+      <CollegeServicesModal
+        isOpen={isCollegeServicesOpen}
+        onClose={() => setIsCollegeServicesOpen(false)}
+      />
 
       {/* PRIORITY 5: SUPPORTING STATISTICS (Administrative Telemetry, No Gamification) */}
       <section aria-labelledby="stats-heading" className="space-y-2 sm:space-y-3">

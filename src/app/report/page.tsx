@@ -2,11 +2,15 @@
 
 import React from 'react';
 import { ReportWorkflow } from '@/components/reporting/ReportWorkflow';
+import { CollegeAppBanner } from '@/components/integration/CollegeAppBanner';
 import { ShieldCheck, PhoneCall } from 'lucide-react';
 
 export default function ReportIssuePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Inbound Integration Banner (shown when launched from College Student App) */}
+      <CollegeAppBanner />
+
       {/* Editorial Header */}
       <div className="text-center max-w-2xl mx-auto space-y-2">
         <div className="inline-flex items-center gap-1.5 bg-maroon-50 border border-maroon-200 text-maroon-900 px-2.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wider">
