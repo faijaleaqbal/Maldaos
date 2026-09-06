@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ListFilter, Plus, MapPin, User, Compass } from 'lucide-react';
+import { Home, ListFilter, Plus, User, Compass } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   const pathname = usePathname();

@@ -9,8 +9,6 @@ import { Button } from '@/components/ui/Button';
 import {
   MapPin,
   ExternalLink,
-  ChevronUp,
-  ChevronDown,
   UserCheck,
   ArrowUpDown,
 } from 'lucide-react';

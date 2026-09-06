@@ -1,6 +1,6 @@
 import React from 'react';
 import { CampusHealthScore } from '@/types';
-import { ShieldCheck, AlertTriangle, Activity, Info, TrendingUp } from 'lucide-react';
+import { Activity, Info } from 'lucide-react';
 
 interface HealthScoreCardProps {
   healthScore: CampusHealthScore;

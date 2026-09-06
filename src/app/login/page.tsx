@@ -8,7 +8,7 @@ import { UserRole } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { getSeedAccount, isDevSeedLoginAvailable } from '@/services/devSeedAccounts';
-import { GraduationCap, Wrench, Building2, Shield, ArrowRight, AlertCircle, Lock } from 'lucide-react';
+import { GraduationCap, Wrench, Building2, Shield, ArrowRight, AlertCircle } from 'lucide-react';
 
 // Dev-only convenience: quick-persona logins never render in production.
 const SHOW_DEV_PERSONAS = isDevSeedLoginAvailable();

@@ -215,7 +215,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
         'Multiple faculty lectures scheduled today',
         'Reported by 14 students',
       ],
-      gatewayProvider: 'CampusPulse AI Engine (Groq Llama-3-70b)',
+      gatewayProvider: 'MaldaOS AI Triage Gateway (Provider Fallback Chain)',
       analyzedAt: new Date(Date.now() - 35 * 3600 * 1000).toISOString(),
     },
     timeline: [
@@ -233,7 +233,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
         label: 'AI Operational Triage Complete',
         description: 'Auto-categorized as FACILITY_CLASSROOM. Suggested Priority: HIGH (Confidence: 92%). Flagged possible hardware fatigue.',
         timestamp: new Date(Date.now() - 35 * 3600 * 1000).toISOString(),
-        actor: { name: 'CampusPulse AI Triage', role: 'Automated Gateway' },
+        actor: { name: 'MaldaOS AI Triage', role: 'Automated Gateway' },
       },
       {
         id: 'tl-3',
@@ -327,7 +327,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
         'Pedestrian slip and fall hazard near staircase',
         'Potential electrical proximity hazard',
       ],
-      gatewayProvider: 'CampusPulse AI Engine',
+      gatewayProvider: 'MaldaOS AI Triage Gateway',
       analyzedAt: new Date(Date.now() - 13 * 3600 * 1000).toISOString(),
     },
     timeline: [
@@ -345,7 +345,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
         label: 'Safety Hazard Identified by AI',
         description: 'Flagged as high-urgency physical safety hazard due to stair proximity.',
         timestamp: new Date(Date.now() - 13 * 3600 * 1000).toISOString(),
-        actor: { name: 'CampusPulse AI Triage', role: 'Automated Gateway' },
+        actor: { name: 'MaldaOS AI Triage', role: 'Automated Gateway' },
       },
       {
         id: 'tl-203',
@@ -406,7 +406,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
         'Affects examination preparation and digital journal access',
         '21 student endorsements within 6 hours',
       ],
-      gatewayProvider: 'CampusPulse AI Engine',
+      gatewayProvider: 'MaldaOS AI Triage Gateway',
       analyzedAt: new Date(Date.now() - 5.8 * 3600 * 1000).toISOString(),
     },
     timeline: [
@@ -424,7 +424,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
         label: 'AI Network Triage',
         description: 'AI detected IT_NETWORK; recommended priority MEDIUM, auto-routed to IT Cell queue.',
         timestamp: new Date(Date.now() - 5.8 * 3600 * 1000).toISOString(),
-        actor: { name: 'CampusPulse AI Triage', role: 'Automated Gateway' },
+        actor: { name: 'MaldaOS AI Triage', role: 'Automated Gateway' },
       },
     ],
     comments: [],
@@ -477,7 +477,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
         'Presence of volatile reagents in laboratory environment',
         'Academic activity halted in affected wing',
       ],
-      gatewayProvider: 'CampusPulse AI Engine',
+      gatewayProvider: 'MaldaOS AI Triage Gateway',
       analyzedAt: new Date(Date.now() - 2.9 * 3600 * 1000).toISOString(),
     },
     timeline: [
@@ -495,7 +495,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
         label: 'AI Priority Escalation: CRITICAL',
         description: 'System automatically triggered High Severity Protocol due to electrical arc in lab setting.',
         timestamp: new Date(Date.now() - 2.9 * 3600 * 1000).toISOString(),
-        actor: { name: 'CampusPulse AI Guard', role: 'Safety Automation' },
+        actor: { name: 'MaldaOS Safety Triage', role: 'Safety Automation' },
       },
       {
         id: 'tl-403',
@@ -670,7 +670,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
         'Primary transit pathway for Science department students',
         'Physical trauma risk if unaddressed',
       ],
-      gatewayProvider: 'CampusPulse AI Engine',
+      gatewayProvider: 'MaldaOS AI Triage Gateway',
       analyzedAt: new Date(Date.now() - 1.9 * 3600 * 1000).toISOString(),
     },
     timeline: [
@@ -688,7 +688,7 @@ export const INITIAL_MOCK_ISSUES: Issue[] = [
         label: 'AI Safety Assessment Complete',
         description: 'Auto-categorized as SAFETY_SECURITY with suggested HIGH priority.',
         timestamp: new Date(Date.now() - 1.9 * 3600 * 1000).toISOString(),
-        actor: { name: 'CampusPulse AI Triage', role: 'Automated Gateway' },
+        actor: { name: 'MaldaOS AI Triage', role: 'Automated Gateway' },
       },
     ],
     comments: [],

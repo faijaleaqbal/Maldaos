@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { CampusLocation, Issue } from '@/types';
 import { LocationOption, IssuesService } from '@/services/issues.service';
 import { MALDA_CAMPUS_COORDINATES } from '@/lib/backendTypes';
-import { Navigation, Box, Map as MapIcon, Compass } from 'lucide-react';
+import { Box, Map as MapIcon, Compass } from 'lucide-react';
 import { detectWebGL } from '@/components/3d/webgl-check';
 
 // Lazy load 3D Spatial Map to prevent SSR hydration issues

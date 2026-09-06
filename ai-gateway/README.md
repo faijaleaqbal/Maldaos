@@ -1,6 +1,6 @@
-# CampusPulse AI Gateway
+# MaldaOS AI Gateway
 
-Provider-agnostic AI layer for the CampusPulse issue reporting system.
+Provider-agnostic AI layer for the MaldaOS issue reporting system.
 
 **Critical rule:** AI output is ALWAYS a recommendation. The gateway never
 resolves, closes, assigns, or performs any irreversible action. Even when
@@ -9,8 +9,8 @@ fallback.
 
 ```
 ┌──────────────────┐
-│  CampusPulse     │
-│  backend         │
+│  MaldaOS        │
+│  backend        │
 └────────┬─────────┘
          │  await gateway.send(...)   /   await Features.analyzeIssue(...)
          ▼
@@ -128,7 +128,7 @@ No code changes to callers are needed because the contract is the same.
 ## Installation (within the backend repo)
 
 ```bash
-cd malda-os/campus-pulse-backend/ai-gateway
+cd maldaos/campus-pulse-backend/ai-gateway
 npm install
 npm test        # 30 unit tests
 npm run lint    # tsc --noEmit

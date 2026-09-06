@@ -11,19 +11,11 @@ import { buildCampusSceneGraph, CampusSceneGraph, BuildingNode } from './campus-
 import { PriorityBadge } from '@/components/issues/PriorityBadge';
 import { IssueStatusBadge } from '@/components/issues/IssueStatusBadge';
 import {
-  Compass,
-  Layers,
   MapPin,
-  AlertTriangle,
   RotateCcw,
-  CheckCircle2,
-  Clock,
   Building2,
   ArrowRight,
-  Filter,
   Eye,
-  Crosshair,
-  Search,
   Maximize2,
   Minimize2,
 } from 'lucide-react';

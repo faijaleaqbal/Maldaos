@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { NotificationItem } from '@/types';
 import { NotificationService } from '@/services/notifications.service';
-import { Bell, Check, ExternalLink, ShieldAlert, Activity, CheckCircle2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Bell, ExternalLink, ShieldAlert, Activity, CheckCircle2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface NotificationDropdownProps {
   isOpen: boolean;

@@ -12,11 +12,6 @@ import {
   ArrowRight,
   ChevronDown,
   RotateCcw,
-  Sparkles,
-  Layers,
-  MapPin,
-  ExternalLink,
-  ShieldCheck,
   MousePointer,
 } from 'lucide-react';
 
@@ -38,11 +33,11 @@ const STORY_SECTIONS: StorySection[] = [
     step: 'ESTD. 1944',
     title: 'Malda College Digital Campus',
     subtitle: 'Institutional Command Ledger & Spatial Operations Desk',
-    desc: 'An authentic interactive 3D twin of Malda College. Real-time campus infrastructure telemetry, fault diagnosis, and department dispatching across 8 academic bhavans.',
+    desc: 'An authentic interactive 3D twin of Malda College. Real-time campus infrastructure telemetry, fault diagnosis, and department dispatching across the academic bhavans.',
     tag: 'Campus Overview',
     buildingFocus: 'Centenary Building (Administration & IQAC)',
-    metricLabel: 'Campus Health Score',
-    metricValue: '96 / 100',
+    metricLabel: 'Live Health Index',
+    metricValue: 'Computed Live',
   },
   {
     id: 'intake',
@@ -52,8 +47,8 @@ const STORY_SECTIONS: StorySection[] = [
     desc: 'Students and faculty submit physical defect tickets pinpointing precise classroom, lab, or corridor coordinates with tamper-evident photographic records.',
     tag: 'Vidyasagar Science Wing',
     buildingFocus: 'Physics & Computer Science Laboratories',
-    metricLabel: 'Intake Velocity',
-    metricValue: '< 4 Min Avg',
+    metricLabel: 'Report Channel',
+    metricValue: 'Evidence + GPS',
   },
   {
     id: 'triage',
@@ -63,8 +58,8 @@ const STORY_SECTIONS: StorySection[] = [
     desc: 'Automated diagnostic checks evaluate structural safety, electrical shock hazard, and water ingress severity to categorize high-priority risks immediately.',
     tag: 'Structural Telemetry',
     buildingFocus: 'Vidyasagar Science Block Facade',
-    metricLabel: 'Triage Accuracy',
-    metricValue: '99.2%',
+    metricLabel: 'Hazard Screening',
+    metricValue: 'Advisory Only',
   },
   {
     id: 'dispatch',
@@ -74,8 +69,8 @@ const STORY_SECTIONS: StorySection[] = [
     desc: 'Certified campus duty engineers and trade technicians receive signed digital work orders with location waypoints, spare parts inventory, and SLA counters.',
     tag: 'Engineering & Estate Cell',
     buildingFocus: 'BCA & IT Innovation Complex',
-    metricLabel: 'Dispatch SLA',
-    metricValue: '15 Min Window',
+    metricLabel: 'Dispatch Routing',
+    metricValue: 'Department Cells',
   },
   {
     id: 'resolution',
@@ -85,8 +80,8 @@ const STORY_SECTIONS: StorySection[] = [
     desc: 'Work crews resolve physical damage on-site, upload timestamped resolution photography, and register used materials into the institutional ledger.',
     tag: 'Student Quadrangle',
     buildingFocus: 'Central Promenade & Common Facilities',
-    metricLabel: 'Resolution Rate',
-    metricValue: '94.8%',
+    metricLabel: 'Closure Evidence',
+    metricValue: 'Photo Proof',
   },
   {
     id: 'audit',
@@ -95,9 +90,9 @@ const STORY_SECTIONS: StorySection[] = [
     subtitle: 'Executive Oversight & Student Signoff Confirmation',
     desc: 'Tickets close only upon reporting student validation and Internal Quality Assurance Cell (IQAC) ledger endorsement, preventing repeat maintenance failures.',
     tag: 'Executive Overview',
-    buildingFocus: 'College Council & 8 Campus Bhavans',
-    metricLabel: 'Audit Compliance',
-    metricValue: '100% Certified',
+    buildingFocus: 'College Council & Campus Bhavans',
+    metricLabel: 'Audit Trail',
+    metricValue: 'Fully Logged',
   },
 ];
 
@@ -510,7 +505,7 @@ export const CampusHeroScene: React.FC = () => {
               Malda College 3D Spatial Grid
             </span>
             <span className="text-[10px] text-ink-muted hidden md:inline">
-              | 8 Bhavans • 25.0018° N, 88.1366° E
+              | 9 Landmarks • 25.0018° N, 88.1366° E
             </span>
           </div>
 

@@ -21,12 +21,8 @@ import {
   Search,
   Filter,
   PlusCircle,
-  SlidersHorizontal,
   LayoutGrid,
   List,
-  CheckCircle2,
-  Clock,
-  ThumbsUp,
 } from 'lucide-react';
 
 export default function IssuesListPage() {

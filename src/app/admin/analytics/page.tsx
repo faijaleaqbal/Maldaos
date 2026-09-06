@@ -3,7 +3,7 @@
 import React from 'react';
 import { useIssues } from '@/context/IssuesContext';
 import { AnalyticsCharts } from '@/components/analytics/AnalyticsCharts';
-import { BarChart3, TrendingUp, CheckCircle, Clock, ShieldCheck, Download } from 'lucide-react';
+import { BarChart3, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export default function AnalyticsPage() {

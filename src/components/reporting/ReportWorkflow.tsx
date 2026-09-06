@@ -29,7 +29,6 @@ import {
   ShieldCheck,
   ShieldAlert,
   Clock,
-  QrCode,
   ExternalLink,
 } from 'lucide-react';
 

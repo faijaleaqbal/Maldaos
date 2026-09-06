@@ -37,7 +37,7 @@ async function upsertUser(email: string, fullName: string) {
 }
 
 async function main() {
-  console.log('Seeding CampusPulse local data...');
+  console.log('Seeding MaldaOS local data...');
 
   // 1) college
   const { data: college, error: colErr } = await db.from('colleges').upsert({ name: 'Malda College' }, { onConflict: 'name' }).select().single();

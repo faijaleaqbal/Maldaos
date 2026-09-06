@@ -9,7 +9,7 @@ import { PriorityBadge } from '@/components/issues/PriorityBadge';
 import { LoadingState } from '@/components/common/LoadingState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { EmptyState } from '@/components/common/EmptyState';
-import { Phone, Users, Shield, UserCheck, Wrench, Search, Filter } from 'lucide-react';
+import { Phone, Users, Search, Filter } from 'lucide-react';
 
 interface StaffProfile {
   id: string;

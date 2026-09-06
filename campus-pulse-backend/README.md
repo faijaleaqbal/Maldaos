@@ -1,4 +1,4 @@
-# CampusPulse — Backend Foundation
+# MaldaOS — Backend Foundation
 
 Campus issue-reporting platform backend: students report campus issues with
 evidence, staff/departments resolve them, everything enforced at the database

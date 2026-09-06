@@ -15,7 +15,6 @@ import {
   User,
   Users,
   Compass,
-  FileSpreadsheet,
   Layers,
 } from 'lucide-react';
 

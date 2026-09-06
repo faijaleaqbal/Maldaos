@@ -9,12 +9,8 @@ import { LocationOption, IssuesService } from '@/services/issues.service';
 import { MALDA_CAMPUS_COORDINATES } from '@/lib/backendTypes';
 import {
   Compass,
-  MapPin,
   Flame,
-  ShieldAlert,
-  Layers,
   Building,
-  Info,
 } from 'lucide-react';
 
 export default function AdminMapPage() {

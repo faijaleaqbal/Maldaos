@@ -10,10 +10,8 @@ import {
   Flame,
   TrendingUp,
   MapPin,
-  CheckCircle,
   ExternalLink,
   Info,
-  Layers,
 } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
 

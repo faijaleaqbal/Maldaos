@@ -3,7 +3,7 @@
 import React from 'react';
 import { IssueStatus, TimelineEvent } from '@/types';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Circle, Clock, Cpu, UserCheck, Wrench, Check } from 'lucide-react';
+import { CheckCircle2, Clock, UserCheck, Wrench, Check } from 'lucide-react';
 
 interface IssueTimelineProps {
   events: TimelineEvent[];

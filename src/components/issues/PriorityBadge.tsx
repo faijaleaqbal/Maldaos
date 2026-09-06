@@ -1,7 +1,7 @@
 import React from 'react';
 import { IssuePriority } from '@/types';
 import { Badge } from '@/components/ui/Badge';
-import { AlertCircle, AlertOctagon, Flame, ShieldAlert } from 'lucide-react';
+import { AlertCircle, Flame, ShieldAlert } from 'lucide-react';
 
 interface PriorityBadgeProps {
   priority: IssuePriority;

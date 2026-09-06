@@ -2,7 +2,7 @@ import React from 'react';
 import { AIAnalysis } from '@/types';
 import { PriorityBadge } from '@/components/issues/PriorityBadge';
 import { Badge } from '@/components/ui/Badge';
-import { Activity, AlertCircle, Copy, CheckCircle, HelpCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Activity, Copy, CheckCircle, HelpCircle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface AIAnalysisPanelProps {

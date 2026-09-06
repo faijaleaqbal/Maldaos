@@ -19,7 +19,6 @@ import {
   AlertTriangle,
   MapPin,
   ArrowRight,
-  Bell,
   Activity,
   Layers,
   ShieldAlert,

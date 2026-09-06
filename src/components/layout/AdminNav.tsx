@@ -12,7 +12,6 @@ import {
   Lightbulb,
   Sliders,
   Radio,
-  Flame,
 } from 'lucide-react';
 
 export const AdminNav: React.FC = () => {

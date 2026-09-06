@@ -11,15 +11,11 @@ import { Button } from '@/components/ui/Button';
 import {
   Compass,
   Building2,
-  Layers,
   ShieldCheck,
   Flame,
-  CheckCircle2,
   ArrowRight,
   PlusCircle,
   Activity,
-  MapPin,
-  FileSpreadsheet,
 } from 'lucide-react';
 
 // Dynamically import 3D Campus Spatial Map to guarantee zero SSR hydration mismatch
@@ -111,8 +107,8 @@ export default function CampusMapPage() {
             <Building2 className="w-5 h-5" />
           </div>
           <div>
-            <span className="block font-mono text-lg font-bold text-ink">8 Bhavans</span>
-            <span className="text-[11px] text-ink-muted">Academic Structures</span>
+            <span className="block font-mono text-lg font-bold text-ink">9 Landmarks</span>
+            <span className="text-[11px] text-ink-muted">Campus Structures</span>
           </div>
         </div>
 

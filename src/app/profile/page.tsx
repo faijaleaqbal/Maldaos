@@ -14,8 +14,6 @@ import {
   Mail,
   Phone,
   Building,
-  Shield,
-  Clock,
   Database,
   RefreshCw,
   LogOut,

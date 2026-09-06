@@ -13,20 +13,12 @@ import { IssueStatusBadge } from '@/components/issues/IssueStatusBadge';
 import { isDevSeedLoginAvailable } from '@/services/devSeedAccounts';
 import {
   PlusCircle,
-  Search,
   CheckCircle2,
-  Clock,
-  ShieldCheck,
-  Cpu,
   ArrowRight,
-  MapPin,
-  Activity,
   ChevronRight,
   GraduationCap,
   Building2,
   Compass,
-  Layers,
-  Sparkles,
 } from 'lucide-react';
 
 // Dynamically load the Devini-grade 3D Campus Experience to ensure white-screen protection and fast startup

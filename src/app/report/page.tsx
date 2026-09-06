@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ReportWorkflow } from '@/components/reporting/ReportWorkflow';
-import { ShieldCheck, PhoneCall, HelpCircle } from 'lucide-react';
+import { ShieldCheck, PhoneCall } from 'lucide-react';
 
 export default function ReportIssuePage() {
   return (

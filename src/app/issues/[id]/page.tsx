@@ -19,15 +19,12 @@ import { EmptyState } from '@/components/common/EmptyState';
 import {
   ArrowLeft,
   MapPin,
-  Clock,
   User,
   ThumbsUp,
-  MessageSquare,
   ShieldCheck,
   Send,
   CheckCircle2,
   Share2,
-  Wrench,
   AlertTriangle,
 } from 'lucide-react';
 

@@ -21,9 +21,6 @@ import {
   Clock,
   CheckCircle2,
   Layers,
-  Wrench,
-  AlertCircle,
-  ExternalLink,
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
