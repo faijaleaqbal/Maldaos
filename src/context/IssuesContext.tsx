@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { AnalyticsSummary, Issue, IssueCategory, IssuePriority, IssueStatus, TimelineEvent, CampusLocation } from '@/types';
+import { AnalyticsSummary, Issue, IssueCategory, IssuePriority, IssueStatus, ReportReview, ReportType, TimelineEvent, CampusLocation } from '@/types';
 import { IssuesService, CreateIssueInput } from '@/services/issues.service';
 import { AnalyticsService } from '@/services/analytics.service';
 import { NotificationService } from '@/services/notifications.service';
@@ -15,6 +15,8 @@ export interface CreateIssueParams {
   location: CampusLocation;
   locationId?: string;
   departmentId?: string | null;
+  reportType?: ReportType;
+  subcategory?: string | null;
   isAnonymous?: boolean;
   images?: string[];
   imageFiles?: File[];
@@ -33,6 +35,8 @@ interface IssuesContextType {
   addComment: (issueId: string, content: string, isInternal?: boolean) => Promise<void>;
   toggleUpvote: (issueId: string) => Promise<void>;
   uploadResolutionProof: (issueId: string, file: File) => Promise<string>;
+  reviewReport: (issueId: string, decision: 'CONFIRM' | 'REJECT' | 'ESCALATE', reason: string) => Promise<ReportReview>;
+  decideReport: (issueId: string, decision: 'APPROVE' | 'REJECT' | 'RETURN', reason: string) => Promise<ReportReview>;
   resetData: () => void;
 }
 
@@ -225,6 +229,48 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     IssuesService.resetToInitialMock();
   };
 
+  // ------------------------------------------------------------
+  // Stage-3/4 review layer (0009 RPCs). After a review decision the
+  // issue is re-fetched so timeline + reviews stay authoritative.
+  // ------------------------------------------------------------
+  const reviewReport = async (
+    issueId: string,
+    decision: 'CONFIRM' | 'REJECT' | 'ESCALATE',
+    reason: string
+  ): Promise<ReportReview> => {
+    try {
+      setError(null);
+      const review = await IssuesService.reviewReport(issueId, decision, reason);
+      const refreshed = await IssuesService.getIssueById(issueId);
+      if (refreshed) {
+        setIssues((prev) => prev.map((i) => (i.id === refreshed.id ? refreshed : i)));
+      }
+      return review;
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit staff review');
+      throw err;
+    }
+  };
+
+  const decideReport = async (
+    issueId: string,
+    decision: 'APPROVE' | 'REJECT' | 'RETURN',
+    reason: string
+  ): Promise<ReportReview> => {
+    try {
+      setError(null);
+      const review = await IssuesService.decideReport(issueId, decision, reason);
+      const refreshed = await IssuesService.getIssueById(issueId);
+      if (refreshed) {
+        setIssues((prev) => prev.map((i) => (i.id === refreshed.id ? refreshed : i)));
+      }
+      return review;
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit admin decision');
+      throw err;
+    }
+  };
+
   return (
     <IssuesContext.Provider
       value={{
@@ -239,6 +285,8 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         addComment,
         toggleUpvote,
         uploadResolutionProof,
+        reviewReport,
+        decideReport,
         resetData,
       }}
     >

@@ -32,6 +32,35 @@ export type IssueCategory =
 
 export type IssuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
+/**
+ * Stage-2 department workflow: complaint vs constructive improvement
+ * suggestion. Mirrors the `report_type` CHECK on public.issues (0009).
+ * Optional everywhere — legacy rows default to COMPLAINT.
+ */
+export type ReportType = 'COMPLAINT' | 'SUGGESTION';
+
+export type ReviewStage = 'STAFF_REVIEW' | 'ADMIN_REVIEW';
+
+export type ReviewDecision =
+  | 'CONFIRM'
+  | 'REJECT'
+  | 'ESCALATE'
+  | 'APPROVE'
+  | 'RETURN';
+
+/** One staff/admin review event on a report (public.report_reviews row). */
+export interface ReportReview {
+  id: string;
+  issueId: string;
+  reviewerId: string;
+  reviewerName?: string;
+  reviewerRole?: UserRole;
+  stage: ReviewStage;
+  decision: ReviewDecision;
+  reason: string;
+  createdAt: string;
+}
+
 export type IssueStatus =
   | 'OPEN'
   | 'ASSIGNED'
@@ -110,6 +139,10 @@ export interface Issue {
   category: IssueCategory;
   priority: IssuePriority;
   status: IssueStatus;
+  /** COMPLAINT | SUGGESTION (DB default COMPLAINT; always set by mapper). */
+  reportType?: ReportType;
+  /** Department catalog subcategory (DB `issues.subcategory`, nullable). */
+  subcategory?: string | null;
   location: CampusLocation;
   locationId?: string;
   departmentId?: string | null;
@@ -141,6 +174,8 @@ export interface Issue {
   aiAnalysis?: AIAnalysis;
   timeline: TimelineEvent[];
   comments: IssueComment[];
+  /** Staff/admin review trail (public.report_reviews, newest last). Optional. */
+  reviews?: ReportReview[];
 }
 
 export interface AuditLogEntry {

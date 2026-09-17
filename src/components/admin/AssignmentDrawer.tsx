@@ -6,6 +6,7 @@ import { useIssues } from '@/context/IssuesContext';
 import { useAuth } from '@/context/AuthContext';
 import { IssuesService, DepartmentOption, StaffOption } from '@/services/issues.service';
 import { AIService } from '@/services/ai.service';
+import { latestReview, REVIEW_DECISION_LABELS } from '@/lib/backendTypes';
 import {
   canUserAssign,
   canUserResolve,
@@ -30,8 +31,14 @@ import {
   Upload,
   Check,
   ExternalLink,
+  ClipboardCheck,
 } from 'lucide-react';
 import Link from 'next/link';
+
+/** Suffix for the suggestion notice — subcategory shown when present. */
+function subcategoryLine(issue: Issue): string {
+  return issue.subcategory ? ` (${issue.subcategory})` : '';
+}
 
 interface AssignmentDrawerProps {
   issue: Issue | null;
@@ -44,7 +51,7 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { assignIssue, updateIssueStatus, uploadResolutionProof, issues } = useIssues();
+  const { assignIssue, updateIssueStatus, uploadResolutionProof, reviewReport, decideReport, refreshIssues, issues } = useIssues();
   const { user } = useAuth();
 
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
@@ -70,6 +77,38 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
     const issueDeptLower = (issue?.department || '').toLowerCase();
     return userDeptLower === issueDeptLower;
   }, [user.role, user.department, issue?.department]);
+
+  // Stage-3/4 review state (separate from lifecycle transition note).
+  const [reviewDecision, setReviewDecision] = useState<'CONFIRM' | 'REJECT' | 'ESCALATE' | ''>('');
+  const [adminDecision, setAdminDecision] = useState<'APPROVE' | 'REJECT' | 'RETURN' | ''>('');
+  const [reviewReason, setReviewReason] = useState('');
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  // Review-layer visibility: only OPEN issues carry a review gate, and only
+  // privileged roles may act (server re-enforces; this is affordance only).
+  const canStaffReview = useMemo(() => {
+    if (!issue || issue.status !== 'OPEN') return false;
+    if (user.role !== 'STAFF' && user.role !== 'DEPARTMENT_ADMIN' && user.role !== 'SUPER_ADMIN') return false;
+    if (user.role === 'SUPER_ADMIN') return true;
+    return isDeptStaffOrAdmin;
+  }, [issue, user.role, isDeptStaffOrAdmin]);
+
+  const canAdminDecide = useMemo(() => {
+    if (!issue || issue.status !== 'OPEN') return false;
+    if (user.role !== 'DEPARTMENT_ADMIN' && user.role !== 'SUPER_ADMIN') return false;
+    if (user.role === 'SUPER_ADMIN') return true;
+    return isDeptStaffOrAdmin;
+  }, [issue, user.role, isDeptStaffOrAdmin]);
+
+  const latestStaffReview = useMemo(
+    () => (issue ? latestReview(issue, 'STAFF_REVIEW') : undefined),
+    [issue]
+  );
+  const latestAdminReview = useMemo(
+    () => (issue ? latestReview(issue, 'ADMIN_REVIEW') : undefined),
+    [issue]
+  );
 
   const isReporter = useMemo(() => {
     return Boolean(issue && user.id && issue.reporter?.id === user.id);
@@ -150,6 +189,10 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
       setDispatchNote('');
       setProofFile(null);
       setTargetStatus(issue.status);
+      setReviewDecision('');
+      setAdminDecision('');
+      setReviewReason('');
+      setReviewError(null);
 
       IssuesService.getDepartments()
         .then((depts) => {
@@ -318,6 +361,37 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
     }
   };
 
+  const handleReviewSubmit = async (kind: 'staff' | 'admin') => {
+    if (!issue) return;
+    const decision = kind === 'staff' ? reviewDecision : adminDecision;
+    if (!decision) {
+      setReviewError(kind === 'staff' ? 'Select Confirm, Reject or Escalate.' : 'Select Approve, Reject or Return.');
+      return;
+    }
+    if (reviewReason.trim().length < 5) {
+      setReviewError('A reason of at least 5 characters is mandatory for every review decision.');
+      return;
+    }
+    try {
+      setIsReviewing(true);
+      setReviewError(null);
+      if (kind === 'staff') {
+        await reviewReport(issue.id, decision as 'CONFIRM' | 'REJECT' | 'ESCALATE', reviewReason.trim());
+        setReviewDecision('');
+      } else {
+        await decideReport(issue.id, decision as 'APPROVE' | 'REJECT' | 'RETURN', reviewReason.trim());
+        setAdminDecision('');
+      }
+      setReviewReason('');
+      await refreshIssues();
+    } catch (err: any) {
+      console.error('Review submit error:', err);
+      setReviewError(err.message || 'Review submission failed. Check authorization.');
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
   const handleStatusTransitionSubmit = async () => {
     try {
       setIsProcessing(true);
@@ -355,8 +429,7 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
     }
   };
 
-  const handleQuickStatusChange = async (newStatus: IssueStatus) => {
-    try {
+  const handleQuickStatusChange = async (newStatus: IssueStatus) => {    try {
       setIsProcessing(true);
       setErrorMessage(null);
 
@@ -556,6 +629,124 @@ export const AssignmentDrawer: React.FC<AssignmentDrawerProps> = ({
               showAdminActions={false}
             />
           </div>
+
+          {/* Stage-3/4: Department Review Gate (0009) — display + RPC only.
+              Never alters issues.status; assignment still flows below. */}
+          {(canStaffReview || canAdminDecide || latestStaffReview || latestAdminReview) && (
+            <div className="space-y-4 pt-2 border-t border-warm-200">
+              <h4 className="font-serif font-semibold text-sm sm:text-base text-ink flex items-center gap-1.5">
+                <ClipboardCheck className="w-4 h-4 text-maroon-700" aria-hidden="true" />
+                <span>Department Review Gate</span>
+              </h4>
+
+              {issue.reportType === 'SUGGESTION' && (
+                <p className="text-[11px] text-ink-muted bg-gold-50/60 border border-gold-200 rounded p-2.5">
+                  Improvement suggestion{subcategoryLine(issue)} — review constructively; approval routes it for dispatch, rejection needs a clear reason.
+                </p>
+              )}
+
+              {/* Latest review trail (display-only) */}
+              {(latestStaffReview || latestAdminReview) && (
+                <div className="space-y-2">
+                  {latestStaffReview && (
+                    <div className="p-2.5 rounded bg-warm-50 border border-warm-200 text-xs space-y-0.5">
+                      <span className="font-semibold text-ink block">
+                        Staff Review: {REVIEW_DECISION_LABELS[latestStaffReview.decision] ?? latestStaffReview.decision}
+                      </span>
+                      <span className="text-ink-muted block">{latestStaffReview.reason}</span>
+                      <span className="text-[11px] text-ink-muted block">
+                        {latestStaffReview.reviewerName || 'Department Reviewer'} • {new Date(latestStaffReview.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  )}
+                  {latestAdminReview && (
+                    <div className="p-2.5 rounded bg-warm-50 border border-warm-200 text-xs space-y-0.5">
+                      <span className="font-semibold text-ink block">
+                        Admin Decision: {REVIEW_DECISION_LABELS[latestAdminReview.decision] ?? latestAdminReview.decision}
+                      </span>
+                      <span className="text-ink-muted block">{latestAdminReview.reason}</span>
+                      <span className="text-[11px] text-ink-muted block">
+                        {latestAdminReview.reviewerName || 'Department Head'} • {new Date(latestAdminReview.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {reviewError && (
+                <div role="alert" aria-live="assertive" className="p-3 bg-rose-50 border border-rose-200 rounded-md flex items-center gap-2 text-xs text-rose-700">
+                  <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>{reviewError}</span>
+                </div>
+              )}
+
+              {canStaffReview && (
+                <div className="space-y-3 bg-warm-50 p-3.5 rounded-lg border border-warm-200">
+                  <Select
+                    label="Staff Decision *"
+                    options={[
+                      { label: 'Select Confirm / Reject / Escalate…', value: '' },
+                      { label: 'Confirm — genuine, route to head approval', value: 'CONFIRM' },
+                      { label: 'Reject — not valid, with reason', value: 'REJECT' },
+                      { label: 'Escalate — needs higher attention', value: 'ESCALATE' },
+                    ]}
+                    value={reviewDecision}
+                    onChange={(e) => setReviewDecision(e.target.value as typeof reviewDecision)}
+                    helperText="Only OPEN reports can be staff-reviewed (server-enforced)."
+                  />
+                  <Textarea
+                    label="Review Reason *"
+                    rows={2}
+                    placeholder="Mandatory reason (min 5 characters) — visible to student and audit…"
+                    value={reviewReason}
+                    onChange={(e) => setReviewReason(e.target.value)}
+                  />
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    isLoading={isReviewing}
+                    onClick={() => handleReviewSubmit('staff')}
+                    leftIcon={<ClipboardCheck className="w-4 h-4" />}
+                  >
+                    Submit Staff Review
+                  </Button>
+                </div>
+              )}
+
+              {canAdminDecide && (
+                <div className="space-y-3 bg-warm-50 p-3.5 rounded-lg border border-warm-200">
+                  <Select
+                    label="Head Decision *"
+                    options={[
+                      { label: 'Select Approve / Reject / Return…', value: '' },
+                      { label: 'Approve — ready for dispatch', value: 'APPROVE' },
+                      { label: 'Reject — with mandatory reason', value: 'REJECT' },
+                      { label: 'Return — send back to staff', value: 'RETURN' },
+                    ]}
+                    value={adminDecision}
+                    onChange={(e) => setAdminDecision(e.target.value as typeof adminDecision)}
+                    helperText="Dept heads need a staff CONFIRM first (super admin may override)."
+                  />
+                  <Textarea
+                    label="Decision Reason *"
+                    rows={2}
+                    placeholder="Mandatory reason (min 5 characters) — visible to student and audit…"
+                    value={reviewReason}
+                    onChange={(e) => setReviewReason(e.target.value)}
+                  />
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    isLoading={isReviewing}
+                    onClick={() => handleReviewSubmit('admin')}
+                    leftIcon={<Check className="w-4 h-4" />}
+                  >
+                    Submit Head Decision
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Triage & Assignment Section */}
           <div className="space-y-4 pt-2 border-t border-warm-200">

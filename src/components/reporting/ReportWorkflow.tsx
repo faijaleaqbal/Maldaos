@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AIAnalysis, CampusLocation, Issue, IssueCategory, IssuePriority, User } from '@/types';
-import { LocationOption, IssuesService } from '@/services/issues.service';
+import { AIAnalysis, CampusLocation, Issue, IssueCategory, IssuePriority, ReportType, User } from '@/types';
+import { DepartmentCategoryOption, DepartmentOption, LocationOption, IssuesService } from '@/services/issues.service';
 import { MALDA_CAMPUS_COORDINATES } from '@/lib/backendTypes';
 import { AIService } from '@/services/ai.service';
 import { useIssues } from '@/context/IssuesContext';
@@ -30,7 +30,14 @@ import {
   ShieldAlert,
   Clock,
   ExternalLink,
+  Building2,
+  Lightbulb,
 } from 'lucide-react';
+
+const REPORT_TYPE_OPTIONS: { label: string; value: ReportType }[] = [
+  { label: 'Complaint — something is broken or needs fixing', value: 'COMPLAINT' },
+  { label: 'Improvement Suggestion — constructive idea for the department', value: 'SUGGESTION' },
+];
 
 const CATEGORY_OPTIONS: { label: string; value: IssueCategory }[] = [
   { label: 'Infrastructure & Civil Works', value: 'INFRASTRUCTURE' },
@@ -46,12 +53,20 @@ export const ReportWorkflow: React.FC = () => {
   const { createIssue, issues } = useIssues();
   const { user } = useAuth();
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdIssue, setCreatedIssue] = useState<Issue | null>(null);
   const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [catalog, setCatalog] = useState<DepartmentCategoryOption[]>([]);
+  const [isCatalogLoading, setIsCatalogLoading] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | undefined>();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Form State — Step 0: department routing (Stage-2 department workflow)
+  const [departmentId, setDepartmentId] = useState<string>('');
+  const [reportType, setReportType] = useState<ReportType>('COMPLAINT');
+  const [subcategory, setSubcategory] = useState<string>('');
 
   // Form State
   const [title, setTitle] = useState('');
@@ -90,10 +105,61 @@ export const ReportWorkflow: React.FC = () => {
       .catch((err) => {
         console.error('ReportWorkflow: Failed to load locations:', err);
       });
+    IssuesService.getDepartments()
+      .then((depts) => {
+        if (!cancelled && depts.length > 0) {
+          setDepartments(depts);
+        }
+      })
+      .catch((err) => {
+        console.error('ReportWorkflow: Failed to load departments:', err);
+      });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Department catalog: reloads when the department or report type changes.
+  // Empty catalog = pre-Stage-1 DB or unconfigured dept -> free subcategory.
+  React.useEffect(() => {
+    if (!departmentId) {
+      setCatalog([]);
+      return;
+    }
+    let cancelled = false;
+    setIsCatalogLoading(true);
+    IssuesService.getDepartmentCatalog(departmentId)
+      .then((rows) => {
+        if (!cancelled) {
+          setCatalog(rows);
+          setSubcategory('');
+        }
+      })
+      .catch((err) => {
+        console.error('ReportWorkflow: Failed to load department catalog:', err);
+        if (!cancelled) setCatalog([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsCatalogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [departmentId]);
+
+  // Reset subcategory when the report type flips (catalog differs per kind).
+  React.useEffect(() => {
+    setSubcategory('');
+  }, [reportType]);
+
+  const catalogSubcategories = React.useMemo(
+    () =>
+      catalog
+        .filter((c) => c.kind === reportType)
+        .map((c) => c.subcategory)
+        .filter((v, i, arr) => arr.indexOf(v) === i),
+    [catalog, reportType]
+  );
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -126,6 +192,14 @@ export const ReportWorkflow: React.FC = () => {
   const validateStep = (currentStep: number): boolean => {
     const errs: Record<string, string> = {};
 
+    if (currentStep === 0) {
+      // Department list unavailable (DB error) -> allow unrouted submit
+      // instead of dead-ending the reporter at Step 0.
+      if (departments.length > 0 && !departmentId) {
+        errs.department = 'Please select the department this report belongs to.';
+      }
+    }
+
     if (currentStep === 1) {
       if (!title.trim() || title.trim().length < 6) {
         errs.title = 'Please provide a descriptive title (at least 6 characters).';
@@ -152,7 +226,7 @@ export const ReportWorkflow: React.FC = () => {
   };
 
   const handleBack = () => {
-    setStep((prev) => (prev > 1 ? ((prev - 1) as any) : prev));
+    setStep((prev) => (prev > 0 ? ((prev - 1) as any) : prev));
   };
 
   const handleSubmit = async () => {
@@ -168,6 +242,9 @@ export const ReportWorkflow: React.FC = () => {
         category,
         priority: finalPriority,
         location,
+        departmentId: departmentId || undefined,
+        reportType,
+        subcategory: subcategory.trim() || undefined,
         isAnonymous,
         imageFiles,
       });
@@ -185,11 +262,13 @@ export const ReportWorkflow: React.FC = () => {
   };
 
   const stepLabels = [
+    { num: 0, label: 'Department', icon: Building2 },
     { num: 1, label: 'Description', icon: FileText },
     { num: 2, label: 'Evidence', icon: Camera },
     { num: 3, label: 'Location', icon: MapPin },
     { num: 4, label: 'Review', icon: CheckCircle },
   ];
+  const progressFraction = (step: number) => step / (stepLabels.length - 1);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -200,7 +279,7 @@ export const ReportWorkflow: React.FC = () => {
             <div className="absolute top-4 left-4 right-4 h-0.5 bg-warm-200 -z-0" />
             <div
               className="absolute top-4 left-4 h-0.5 bg-maroon-700 -z-0 transition-all duration-300"
-              style={{ width: `${((step - 1) / (stepLabels.length - 1)) * 100}%` }}
+              style={{ width: `${progressFraction(step) * 100}%` }}
             />
 
             {stepLabels.map((s) => {
@@ -237,6 +316,93 @@ export const ReportWorkflow: React.FC = () => {
             })}
           </ol>
         </nav>
+      )}
+
+      {/* STEP 0: Department routing (Stage-2) */}
+      {step === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg border border-warm-300 p-5 sm:p-6 shadow-card space-y-5"
+        >
+          <div className="border-b border-warm-200 pb-3">
+            <h3 className="font-serif font-semibold text-lg text-ink">Step 0: Route to Department</h3>
+            <p className="text-xs sm:text-sm text-ink-muted">
+              Choose the department, then whether this is a complaint or a constructive improvement suggestion.
+            </p>
+          </div>
+
+          <Select
+            label="Department *"
+            options={[
+              { label: departments.length === 0 ? 'Loading departments…' : 'Select a department…', value: '' },
+              ...departments.map((d) => ({ label: `${d.name} (${d.code})`, value: d.id })),
+            ]}
+            value={departmentId}
+            onChange={(e) => setDepartmentId(e.target.value)}
+            error={errors.department}
+            disabled={departments.length === 0}
+            helperText={
+              departments.length === 0
+                ? 'Department list could not be loaded — you can still submit; the operations desk will route it.'
+                : undefined
+            }
+          />
+
+          <Select
+            label="Report Type *"
+            options={REPORT_TYPE_OPTIONS}
+            value={reportType}
+            onChange={(e) => setReportType(e.target.value as ReportType)}
+            helperText={
+              reportType === 'SUGGESTION'
+                ? 'Suggestions are constructive improvement ideas for the department — not personal complaints.'
+                : undefined
+            }
+          />
+
+          {isCatalogLoading ? (
+            <p className="text-xs text-ink-muted" role="status">Loading department categories…</p>
+          ) : catalogSubcategories.length > 0 ? (
+            <Select
+              label={reportType === 'SUGGESTION' ? 'Suggestion Area' : 'Sub-category'}
+              options={[
+                { label: 'Select a sub-category…', value: '' },
+                ...catalogSubcategories.map((s) => ({ label: s, value: s })),
+              ]}
+              value={subcategory}
+              onChange={(e) => setSubcategory(e.target.value)}
+              helperText="Department-specific categories from the campus catalog."
+            />
+          ) : (
+            departmentId !== '' && (
+              <Input
+                label={reportType === 'SUGGESTION' ? 'Suggestion Area (optional)' : 'Sub-category (optional)'}
+                placeholder="e.g. Classroom Problem, Lab Improvement…"
+                value={subcategory}
+                onChange={(e) => setSubcategory(e.target.value)}
+                helperText="No catalog configured for this department yet — free text is accepted."
+              />
+            )
+          )}
+
+          {reportType === 'SUGGESTION' && (
+            <div className="rounded-lg border border-gold-200 bg-gold-50/60 p-3.5 flex items-start gap-3">
+              <Lightbulb className="w-4 h-4 text-gold-700 shrink-0 mt-0.5" />
+              <p className="text-xs text-ink leading-relaxed">
+                <span className="font-semibold block text-ink">Constructive suggestions only</span>
+                Describe what could be improved (teaching support, lab hours, study material, classroom
+                environment). Avoid naming individuals — the department reviews every suggestion.
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-3 border-t border-warm-200">
+            <Button onClick={handleNext} rightIcon={<ArrowRight className="w-4 h-4" />} className="w-full sm:w-auto">
+              Proceed to Description
+            </Button>
+          </div>
+        </motion.div>
       )}
 
       {/* STEP 1: Description */}
@@ -393,6 +559,21 @@ export const ReportWorkflow: React.FC = () => {
 
           {/* Structured Review Card */}
           <div className="rounded-lg border border-warm-300 bg-warm-100/70 p-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-warm-200 pb-3">
+              <div>
+                <span className="text-[11px] text-ink-muted uppercase font-medium block">Report Type</span>
+                <span className="font-medium text-ink text-sm">
+                  {reportType === 'SUGGESTION' ? 'Improvement Suggestion' : 'Complaint'}
+                  {subcategory.trim() ? ` • ${subcategory.trim()}` : ''}
+                </span>
+              </div>
+              <div>
+                <span className="text-[11px] text-ink-muted uppercase font-medium block">Department</span>
+                <span className="font-medium text-ink text-sm">
+                  {departments.find((d) => d.id === departmentId)?.name || 'Operations Desk (unrouted)'}
+                </span>
+              </div>
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-warm-200 pb-3">
               <div>
                 <span className="text-[11px] text-ink-muted uppercase font-medium block">Category</span>
@@ -607,7 +788,7 @@ export const ReportWorkflow: React.FC = () => {
                 setTitle('');
                 setDescription('');
                 setImageFiles([]);
-                setStep(1);
+                setStep(0);
                 setCreatedIssue(null);
               }}
             >

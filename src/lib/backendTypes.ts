@@ -35,11 +35,13 @@ import {
   IssuePriority,
   IssueStatus,
   NotificationItem,
+  ReportReview,
+  ReportType,
   TimelineEvent,
   UserRole,
 } from '@/types';
 
-export type { UserRole, IssueStatus, IssueCategory, IssuePriority } from '@/types';
+export type { UserRole, IssueStatus, IssueCategory, IssuePriority, ReportType } from '@/types';
 
 // ============================================================
 // ENUM SETS — mirror of supabase/migrations/0001_schema.sql
@@ -57,6 +59,17 @@ export const ISSUE_CATEGORIES = [
   'OTHER',
 ] as const;
 export const IMAGE_KINDS = ['EVIDENCE', 'RESOLUTION_PROOF'] as const;
+// ============================================================
+// REPORT TYPES + REVIEW DECISIONS — mirror of 0009 (TEXT + CHECK, no enum)
+// ============================================================
+export const REPORT_TYPES = ['COMPLAINT', 'SUGGESTION'] as const;
+export const REVIEW_STAGES = ['STAFF_REVIEW', 'ADMIN_REVIEW'] as const;
+export const REVIEW_DECISIONS = ['CONFIRM', 'REJECT', 'ESCALATE', 'APPROVE', 'RETURN'] as const;
+
+/** Normalize any report_type literal (legacy/unknown -> COMPLAINT). */
+export function normalizeReportType(raw: string | null | undefined): ReportType {
+  return raw === 'SUGGESTION' ? 'SUGGESTION' : 'COMPLAINT';
+}
 export const NOTIFICATION_TYPES = [
   'ISSUE_ASSIGNED',
   'STATUS_CHANGED',
@@ -194,6 +207,23 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   SUPER_ADMIN: 'Super Admin',
 };
 
+export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
+  COMPLAINT: 'Complaint',
+  SUGGESTION: 'Improvement Suggestion',
+};
+
+export const REVIEW_DECISION_LABELS: Record<string, string> = {
+  CONFIRM: 'Confirmed by Staff',
+  REJECT: 'Rejected',
+  ESCALATE: 'Escalated',
+  APPROVE: 'Approved',
+  RETURN: 'Returned for Review',
+};
+
+export function reportTypeLabel(t: ReportType): string {
+  return REPORT_TYPE_LABELS[t] ?? t;
+}
+
 export const NOTIFICATION_LABELS: Record<string, string> = {
   ISSUE_ASSIGNED: 'Work Order Assigned',
   STATUS_CHANGED: 'Status Updated',
@@ -216,6 +246,91 @@ export function priorityLabel(p: IssuePriority): string {
 }
 export function categoryLabel(c: IssueCategory): string {
   return CATEGORY_LABELS[c] ?? c;
+}
+
+/**
+ * Review-layer queue helpers (Stage-3/4 UI only — all rules enforced by the
+ * 0009 RPCs; these helpers only classify already-fetched Issue VMs).
+ */
+
+/** Latest review for a given stage, or undefined. */
+export function latestReview(
+  issue: Issue,
+  stage: 'STAFF_REVIEW' | 'ADMIN_REVIEW'
+): import('@/types').ReportReview | undefined {
+  const list = (issue.reviews || []).filter((r) => r.stage === stage);
+  return list.length > 0 ? list[list.length - 1] : undefined;
+}
+
+/**
+ * Staff queue state for an OPEN issue:
+ *  PENDING_REVIEW — no STAFF_REVIEW yet
+ *  ESCALATED      — latest STAFF_REVIEW is ESCALATE
+ *  REJECTED       — latest STAFF_REVIEW is REJECT
+ *  CONFIRMED      — latest STAFF_REVIEW is CONFIRM (awaiting admin)
+ *  DECIDED        — an ADMIN_REVIEW exists (staff queue done)
+ *  NOT_OPEN       — status is not OPEN (review gate closed)
+ */
+export type StaffQueueState =
+  | 'PENDING_REVIEW'
+  | 'ESCALATED'
+  | 'REJECTED'
+  | 'CONFIRMED'
+  | 'DECIDED'
+  | 'NOT_OPEN';
+
+export function staffQueueState(issue: Issue): StaffQueueState {
+  if (issue.status !== 'OPEN') return 'NOT_OPEN';
+  if ((issue.reviews || []).some((r) => r.stage === 'ADMIN_REVIEW')) return 'DECIDED';
+  const latest = latestReview(issue, 'STAFF_REVIEW');
+  if (!latest) return 'PENDING_REVIEW';
+  if (latest.decision === 'CONFIRM') return 'CONFIRMED';
+  if (latest.decision === 'REJECT') return 'REJECTED';
+  return 'ESCALATED';
+}
+
+/**
+ * Admin approval-queue state for an OPEN issue:
+ *  AWAITING_ADMIN   — staff CONFIRM present, no ADMIN_REVIEW yet
+ *  APPROVED / REJECTED / RETURNED — latest ADMIN_REVIEW decision
+ *  AWAITING_STAFF   — no staff CONFIRM yet (gate closed for dept heads)
+ *  NOT_OPEN         — status is not OPEN
+ */
+export type AdminQueueState =
+  | 'AWAITING_ADMIN'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'RETURNED'
+  | 'AWAITING_STAFF'
+  | 'NOT_OPEN';
+
+export function adminQueueState(issue: Issue): AdminQueueState {
+  if (issue.status !== 'OPEN') return 'NOT_OPEN';
+  const admin = latestReview(issue, 'ADMIN_REVIEW');
+  if (admin) {
+    if (admin.decision === 'APPROVE') return 'APPROVED';
+    if (admin.decision === 'REJECT') return 'REJECTED';
+    return 'RETURNED';
+  }
+  const staff = latestReview(issue, 'STAFF_REVIEW');
+  if (staff && staff.decision === 'CONFIRM') return 'AWAITING_ADMIN';
+  return 'AWAITING_STAFF';
+}
+
+/** Display-only review progress label for student tracking (no status change). */
+export function reviewProgressLabel(issue: Issue): string | null {
+  if (issue.status !== 'OPEN') return null;
+  const admin = latestReview(issue, 'ADMIN_REVIEW');
+  if (admin) {
+    if (admin.decision === 'APPROVE') return 'Admin Approved — awaiting dispatch';
+    if (admin.decision === 'REJECT') return 'Not approved — see reason';
+    return 'Returned to staff for re-review';
+  }
+  const staff = latestReview(issue, 'STAFF_REVIEW');
+  if (!staff) return 'Submitted — awaiting staff review';
+  if (staff.decision === 'CONFIRM') return 'Staff Confirmed — awaiting admin approval';
+  if (staff.decision === 'REJECT') return 'Not accepted — see reason';
+  return 'Escalated by staff';
 }
 
 /** Order value for sorting statuses along the lifecycle. */
@@ -279,6 +394,8 @@ export interface IssueRow {
   is_anonymous: boolean;
   resolution_summary: string | null;
   resolved_at: string | null;
+  report_type?: string | null;
+  subcategory?: string | null;
   created_at: string;
   updated_at: string;
   // joined relations (PostgREST embeds)
@@ -290,6 +407,7 @@ export interface IssueRow {
   issue_votes?: { voter_id: string }[];
   issue_status_history?: StatusHistoryRow[];
   issue_assignments?: AssignmentRow[];
+  report_reviews?: ReportReviewRow[];
 }
 
 export interface ImageRow {
@@ -348,6 +466,60 @@ export interface NotificationRow {
 }
 
 export interface VoteRow { issue_id: string; voter_id: string; }
+
+export interface ReportReviewRow {
+  id: string;
+  issue_id: string;
+  reviewer_id: string;
+  stage: string;
+  decision: string;
+  reason: string;
+  created_at: string;
+  reviewer?: { id: string; full_name: string; role: UserRole } | null;
+}
+
+/** Map a report_reviews row to the frontend ReportReview VM. */
+export function mapReviewRow(row: ReportReviewRow): ReportReview {
+  const reviewer = row.reviewer;
+  return {
+    id: row.id,
+    issueId: row.issue_id,
+    reviewerId: row.reviewer_id,
+    reviewerName: reviewer?.full_name || 'Department Reviewer',
+    reviewerRole: reviewer?.role,
+    stage: (row.stage === 'ADMIN_REVIEW' ? 'ADMIN_REVIEW' : 'STAFF_REVIEW'),
+    decision: (REVIEW_DECISIONS as readonly string[]).includes(row.decision)
+      ? (row.decision as ReportReview['decision'])
+      : 'CONFIRM',
+    reason: row.reason,
+    createdAt: row.created_at,
+  };
+}
+
+/**
+ * Map report reviews to timeline events (review layer only — never alters
+ * the 5-state status progress bar; appended AFTER status history).
+ */
+export function mapReviewsToTimelineEvents(reviews: ReportReviewRow[]): TimelineEvent[] {
+  return (reviews || []).map((r) => {
+    const review = mapReviewRow(r);
+    const label =
+      review.stage === 'ADMIN_REVIEW'
+        ? `Admin Decision: ${REVIEW_DECISION_LABELS[review.decision] ?? review.decision}`
+        : `Staff Review: ${REVIEW_DECISION_LABELS[review.decision] ?? review.decision}`;
+    return {
+      id: `rev-${r.id}`,
+      status: 'OPEN' as IssueStatus, // review events keep the OPEN anchor; display-only
+      label,
+      description: review.reason,
+      timestamp: review.createdAt,
+      actor: {
+        name: review.reviewerName || 'Department Reviewer',
+        role: review.reviewerRole ? ROLE_LABELS[review.reviewerRole] || review.reviewerRole : 'Staff',
+      },
+    };
+  });
+}
 
 // ============================================================
 // TICKET NUMBER — deterministic client-side derivation (not stored in DB)
@@ -512,6 +684,7 @@ export function mapIssueRowToViewModel(
   const status = normalizeStatus(row.status);
   const priority = normalizePriority(row.priority);
   const category = normalizeCategory(row.category);
+  const reportType = normalizeReportType(row.report_type);
 
   const isOwner = viewer.userId != null && row.student_id === viewer.userId;
   const isStaffOrAbove = viewer.role != null && viewer.role !== 'STUDENT';
@@ -537,6 +710,7 @@ export function mapIssueRowToViewModel(
   }
 
   // Timeline: creation event + status history (ordered by created_at)
+  // + review-layer events (staff/admin decisions, display-only).
   const timeline: TimelineEvent[] = [
     {
       id: `tl-${row.id}-created`,
@@ -555,7 +729,15 @@ export function mapIssueRowToViewModel(
       .slice()
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
       .map(mapHistoryToTimelineEvent),
+    ...mapReviewsToTimelineEvents(
+      (row.report_reviews || [])
+        .slice()
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    ),
   ];
+
+  // Reviews VM (RLS already scopes visibility; no re-filter here).
+  const reviews = (row.report_reviews || []).map(mapReviewRow);
 
   // Comments (RLS already filters internal notes by role; we do not re-filter)
   const comments = (row.issue_comments || []).map(mapCommentRow);
@@ -572,6 +754,8 @@ export function mapIssueRowToViewModel(
     category,
     priority,
     status,
+    reportType,
+    subcategory: row.subcategory ?? null,
     location,
     locationId: row.location_id,
     departmentId: row.department_id,
@@ -597,5 +781,6 @@ export function mapIssueRowToViewModel(
     resolvedAt: row.resolved_at,
     timeline,
     comments,
+    reviews,
   };
 }

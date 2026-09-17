@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useIssues } from '@/context/IssuesContext';
 import { useAuth } from '@/context/AuthContext';
 import { Issue, IssueStatus } from '@/types';
+import { reviewProgressLabel } from '@/lib/backendTypes';
 import { IssueStatusBadge } from '@/components/issues/IssueStatusBadge';
 import { PriorityBadge } from '@/components/issues/PriorityBadge';
 import { IssueTimeline } from '@/components/issues/IssueTimeline';
@@ -53,6 +54,7 @@ export default function IssueDetailPage() {
   const issue = issues.find(
     (i) => i.id === id || i.ticketNumber.toLowerCase() === (id as string).toLowerCase()
   );
+  const reviewLabel = issue ? reviewProgressLabel(issue) : null;
 
   // Older tickets may not have a persisted triage result. Generate a
   // client-side recommendation for display while retaining the panel's honest
@@ -273,6 +275,14 @@ export default function IssueDetailPage() {
             <IssueStatusBadge status={issue.status} size="md" />
           </div>
         </div>
+
+        {/* Stage-3/4 review progress (display-only — status machine unchanged) */}
+        {reviewLabel && (
+          <div className="flex items-center gap-2 text-xs text-ink-muted bg-warm-50 border border-warm-200 rounded-md px-3 py-2" role="status">
+            <span className="w-2 h-2 rounded-full bg-maroon-600 shrink-0" aria-hidden="true" />
+            <span><strong className="text-ink">Review:</strong> {reviewLabel}{issue.subcategory ? ` • ${issue.subcategory}` : ''}</span>
+          </div>
+        )}
 
         {/* Issue Title */}
         <h1 className="font-serif font-bold text-xl sm:text-3xl text-ink leading-snug">

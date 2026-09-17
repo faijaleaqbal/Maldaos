@@ -7,8 +7,10 @@ import {
 import {
   ImageRow,
   IssueRow,
+  ReportReviewRow,
   UserRole,
   mapIssueRowToViewModel,
+  mapReviewRow,
 } from '@/lib/backendTypes';
 import {
   Issue,
@@ -16,6 +18,9 @@ import {
   IssueComment,
   IssuePriority,
   IssueStatus,
+  ReportReview,
+  ReportType,
+  ReviewDecision,
   TimelineEvent,
   CampusLocation,
   BackendError,
@@ -34,6 +39,7 @@ const ISSUE_SELECT = `
   issue_comments(id, author_id, body, is_internal, created_at, author:author_id(id, full_name, role)),
   issue_votes(voter_id),
   issue_status_history(id, old_status, new_status, changed_by, reason, created_at, changer:changed_by(id, full_name, role)),
+  report_reviews:report_reviews(id, issue_id, reviewer_id, stage, decision, reason, created_at, reviewer:reviewer_id(id, full_name, role)),
   issue_assignments(id, department_id, assigned_to, note, created_at, assignee:assigned_to(id, full_name, phone), assigner:assigned_by(id, full_name, role), department:department_id(name))
 `;
 
@@ -45,6 +51,8 @@ export interface CreateIssueInput {
   location: CampusLocation;
   locationId?: string;
   departmentId?: string | null;
+  reportType?: ReportType;
+  subcategory?: string | null;
   isAnonymous?: boolean;
   reporter: {
     id: string;
@@ -68,6 +76,13 @@ export interface AssignIssueInput {
 }
 
 export interface DepartmentOption { id: string; name: string; code: string; }
+export interface DepartmentCategoryOption {
+  id: string;
+  department_id: string;
+  category: IssueCategory;
+  subcategory: string;
+  kind: ReportType;
+}
 export interface LocationOption {
   id: string;
   name: string;
@@ -281,6 +296,8 @@ export const IssuesService = {
         category: data.category,
         priority: data.priority,
         status: 'OPEN',
+        reportType: data.reportType || 'COMPLAINT',
+        subcategory: data.subcategory ?? null,
         location: data.location,
         reporter: data.reporter,
         department: data.department || 'Campus Infrastructure',
@@ -334,8 +351,10 @@ export const IssuesService = {
       locationId = matched.id;
     }
 
-    // create_issue RPC (students only; DB enforces role + validation)
-    const { data: createdRow, error: rpcErr } = await supabase.rpc('create_issue', {
+    // create_issue RPC (students only; DB enforces role + validation).
+    // p_report_type / p_subcategory are optional trailing params (0009);
+    // omitting them preserves the exact legacy call for old databases.
+    const rpcArgs: Record<string, unknown> = {
       p_title: data.title,
       p_description: data.description,
       p_category: data.category,
@@ -343,7 +362,10 @@ export const IssuesService = {
       p_priority: data.priority || 'LOW',
       p_department_id: data.departmentId || null,
       p_is_anonymous: Boolean(data.isAnonymous),
-    });
+    };
+    if (data.reportType) rpcArgs.p_report_type = data.reportType;
+    if (data.subcategory) rpcArgs.p_subcategory = data.subcategory;
+    const { data: createdRow, error: rpcErr } = await supabase.rpc('create_issue', rpcArgs);
 
     if (rpcErr) {
       console.error('create_issue RPC failed:', rpcErr);
@@ -665,8 +687,91 @@ export const IssuesService = {
   },
 
   // ------------------------------------------------------------
-  // REFERENCE DATA — departments / locations / staff from the DB
+  // DEPARTMENT CATALOG — department_categories (0009). Returns [] when the
+  // table is unavailable (pre-0009 database) so the workflow can fall back
+  // to the static category list instead of blocking submission.
   // ------------------------------------------------------------
+  async getDepartmentCatalog(departmentId: string): Promise<DepartmentCategoryOption[]> {
+    if (isMockModeEnabled()) {
+      return [];
+    }
+    try {
+      const supabase = requireSupabaseClient();
+      const { data, error } = await supabase
+        .from('department_categories')
+        .select('id, department_id, category, subcategory, kind')
+        .eq('department_id', departmentId)
+        .eq('is_active', true)
+        .order('subcategory');
+      if (error) throw error;
+      return (data || []) as DepartmentCategoryOption[];
+    } catch (e) {
+      console.warn('getDepartmentCatalog unavailable (pre-Stage-1 DB?):', e);
+      return [];
+    }
+  },
+
+  // ------------------------------------------------------------
+  // REPORT REVIEWS — review_report() / admin_decide_report() RPCs (0009).
+  // Review layer only: neither call changes issues.status (verified gate).
+  // ------------------------------------------------------------
+  async reviewReport(
+    issueId: string,
+    decision: 'CONFIRM' | 'REJECT' | 'ESCALATE',
+    reason: string
+  ): Promise<ReportReview> {
+    if (isMockModeEnabled()) {
+      return {
+        id: `rev-${Date.now()}`,
+        issueId,
+        reviewerId: 'mock-reviewer',
+        stage: 'STAFF_REVIEW',
+        decision,
+        reason,
+        createdAt: new Date().toISOString(),
+      };
+    }
+    const supabase = requireSupabaseClient();
+    const { data, error } = await supabase.rpc('review_report', {
+      p_issue_id: issueId,
+      p_decision: decision,
+      p_reason: reason,
+    });
+    if (error) {
+      console.error('review_report RPC failed:', error);
+      throw toBackendError(error, 'REVIEW_FAILED');
+    }
+    return mapReviewRow(data as ReportReviewRow);
+  },
+
+  async decideReport(
+    issueId: string,
+    decision: 'APPROVE' | 'REJECT' | 'RETURN',
+    reason: string
+  ): Promise<ReportReview> {
+    if (isMockModeEnabled()) {
+      return {
+        id: `rev-${Date.now()}`,
+        issueId,
+        reviewerId: 'mock-reviewer',
+        stage: 'ADMIN_REVIEW',
+        decision: decision as ReviewDecision,
+        reason,
+        createdAt: new Date().toISOString(),
+      };
+    }
+    const supabase = requireSupabaseClient();
+    const { data, error } = await supabase.rpc('admin_decide_report', {
+      p_issue_id: issueId,
+      p_decision: decision,
+      p_reason: reason,
+    });
+    if (error) {
+      console.error('admin_decide_report RPC failed:', error);
+      throw toBackendError(error, 'ADMIN_DECISION_FAILED');
+    }
+    return mapReviewRow(data as ReportReviewRow);
+  },
   async getDepartments(): Promise<DepartmentOption[]> {
     if (isMockModeEnabled()) {
       return [

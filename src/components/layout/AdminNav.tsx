@@ -12,6 +12,8 @@ import {
   Lightbulb,
   Sliders,
   Radio,
+  Inbox,
+  Stamp,
 } from 'lucide-react';
 
 export const AdminNav: React.FC = () => {
@@ -20,6 +22,8 @@ export const AdminNav: React.FC = () => {
   const navItems = [
     { label: 'Command Overview', href: '/admin', icon: LayoutDashboard },
     { label: 'Issue Queue', href: '/admin/issues', icon: ClipboardList },
+    { label: 'Dept Reviews', href: '/admin/reviews', icon: Inbox },
+    { label: 'Approvals', href: '/admin/approvals', icon: Stamp },
     { label: 'Assignments', href: '/admin/assignments', icon: UserCheck },
     { label: 'Campus Map', href: '/admin/map', icon: Compass },
     { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
