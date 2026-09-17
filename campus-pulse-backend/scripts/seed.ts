@@ -103,14 +103,52 @@ async function main() {
   if (profErr) throw new Error('profiles upsert failed: ' + JSON.stringify(profErr));
   console.log('users + roles seeded');
 
+  // 5b) department catalog (DEV/DEMO seed only — production catalogs are
+  // managed by super admins; staff pool stays data-driven, never hard-coded)
+  const CATALOG: Array<{ category: string; subcategory: string; kind: string }> = [
+    { category: 'ACADEMICS', subcategory: 'Classroom Problem', kind: 'COMPLAINT' },
+    { category: 'INFRASTRUCTURE', subcategory: 'Electrical', kind: 'COMPLAINT' },
+    { category: 'INFRASTRUCTURE', subcategory: 'Plumbing / Water', kind: 'COMPLAINT' },
+    { category: 'CLEANLINESS', subcategory: 'Cleanliness', kind: 'COMPLAINT' },
+    { category: 'INFRASTRUCTURE', subcategory: 'Furniture', kind: 'COMPLAINT' },
+    { category: 'ACADEMICS', subcategory: 'Lab / IT', kind: 'COMPLAINT' },
+    { category: 'ACADEMICS', subcategory: 'Library', kind: 'COMPLAINT' },
+    { category: 'SAFETY', subcategory: 'Security / Safety', kind: 'COMPLAINT' },
+    { category: 'SAFETY', subcategory: 'Parking / Accessibility', kind: 'COMPLAINT' },
+    { category: 'CLEANLINESS', subcategory: 'Waste / Environment', kind: 'COMPLAINT' },
+    { category: 'HOSTEL', subcategory: 'Hostel Facility', kind: 'COMPLAINT' },
+    { category: 'OTHER', subcategory: 'Other', kind: 'COMPLAINT' },
+    { category: 'ACADEMICS', subcategory: 'Teaching & Class Improvement', kind: 'SUGGESTION' },
+    { category: 'ACADEMICS', subcategory: 'Study Material Request', kind: 'SUGGESTION' },
+    { category: 'ACADEMICS', subcategory: 'Lab Improvement', kind: 'SUGGESTION' },
+    { category: 'ACADEMICS', subcategory: 'Timetable / Class Suggestion', kind: 'SUGGESTION' },
+    { category: 'INFRASTRUCTURE', subcategory: 'Classroom Environment', kind: 'SUGGESTION' },
+    { category: 'OTHER', subcategory: 'Department Facility Suggestion', kind: 'SUGGESTION' },
+    { category: 'OTHER', subcategory: 'Other Suggestion', kind: 'SUGGESTION' },
+  ];
+  for (const deptId of Object.values(deptByCode)) {
+    const { error: catErr } = await db
+      .from('department_categories')
+      .upsert(
+        CATALOG.map((c) => ({ department_id: deptId as string, ...c })),
+        { onConflict: 'department_id,category,subcategory,kind' }
+      );
+    if (catErr) throw new Error('department catalog seed failed: ' + JSON.stringify(catErr));
+  }
+  console.log('department catalog seeded (demo only)');
+
   // 6) sample issues (direct insert via service key — trusted seed path;
-  //    re-runnable: delete demo rows by fixed titles first)
+  //    re-runnable: delete demo rows by fixed titles first).
+  //    DEMO MARKER: demoSeed=true flags every demo row so the demo can be
+  //    reset without touching real data. No ERP duplication — references
+  //    only existing departments/locations/profiles.
   const demoTitles = [
     'Broken library chair',
     'Projector not working in Lab 2',
     'Water cooler leaking in Hostel A',
     'Cafeteria hygiene issue',
     'Flooded sports ground corner',
+    '[DEMO] Fan not working in Room 204',
   ];
   const { data: old } = await db.from('issues').select('id').in('title', demoTitles);
   if (old && old.length) await db.from('issues').delete().in('id', old.map((r: { id: string }) => r.id));
@@ -122,27 +160,40 @@ async function main() {
         college_id: collegeId, student_id: student1, department_id: null, location_id: locByCode.LIB,
         title: 'Broken library chair', description: 'Chair on the second floor of the library has a broken backrest.',
         category: 'INFRASTRUCTURE', priority: 'MEDIUM', status: 'OPEN', is_anonymous: false,
+        report_type: 'COMPLAINT',
       },
       {
         college_id: collegeId, student_id: student2, department_id: deptByCode.CSE, location_id: locByCode.MAIN,
         title: 'Projector not working in Lab 2', description: 'Ceiling projector in Computer Lab 2 flickers and shuts off.',
         category: 'ACADEMICS', priority: 'HIGH', status: 'ASSIGNED', is_anonymous: false,
+        report_type: 'COMPLAINT', subcategory: 'Lab / IT',
       },
       {
         college_id: collegeId, student_id: student1, department_id: deptByCode.FAC, location_id: locByCode['HOST-A'],
         title: 'Water cooler leaking in Hostel A', description: 'The ground floor water cooler has been leaking for three days.',
         category: 'HOSTEL', priority: 'URGENT', status: 'IN_PROGRESS', is_anonymous: false,
+        report_type: 'COMPLAINT', subcategory: 'Hostel Facility',
       },
       {
         college_id: collegeId, student_id: student2, department_id: deptByCode.FAC, location_id: locByCode.CAF,
         title: 'Cafeteria hygiene issue', description: 'Tables near the counter are not being cleaned regularly.',
         category: 'CLEANLINESS', priority: 'MEDIUM', status: 'RESOLVED', is_anonymous: false,
+        report_type: 'COMPLAINT', subcategory: 'Cleanliness',
         resolution_summary: 'Cleaning schedule enforced and extra bins added.', resolved_at: new Date(Date.now() - 3600_000 * 24).toISOString(),
       },
       {
         college_id: collegeId, student_id: student1, department_id: null, location_id: locByCode.SPORT,
         title: 'Flooded sports ground corner', description: 'The north-east corner of the ground stays waterlogged after rain.',
         category: 'INFRASTRUCTURE', priority: 'LOW', status: 'OPEN', is_anonymous: true,
+        report_type: 'COMPLAINT',
+      },
+      {
+        // DEMO ROW: the principal-demo walkthrough ticket. Fresh OPEN + CSE-routed
+        // so Staff Confirm -> Head Approve -> dispatch works live, no DB edits.
+        college_id: collegeId, student_id: student1, department_id: deptByCode.CSE, location_id: locByCode.MAIN,
+        title: '[DEMO] Fan not working in Room 204', description: 'Ceiling fan in Room 204 has been dead for a week; lectures suffer in the heat.',
+        category: 'INFRASTRUCTURE', priority: 'MEDIUM', status: 'OPEN', is_anonymous: false,
+        report_type: 'COMPLAINT', subcategory: 'Electrical',
       },
     ])
     .select();
